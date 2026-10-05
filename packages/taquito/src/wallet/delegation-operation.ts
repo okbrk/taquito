@@ -7,7 +7,6 @@ import {
 import { Observable } from 'rxjs';
 import { Context } from '../context';
 import { WalletOperation, OperationStatus } from './operation';
-import { ObservableError } from './errors';
 
 export class DelegationWalletOperation extends WalletOperation {
   constructor(
@@ -20,24 +19,16 @@ export class DelegationWalletOperation extends WalletOperation {
 
   public async revealOperation() {
     const operationResult = await this.operationResults();
-    if (operationResult) {
-      return operationResult.find((x) => x.kind === OpKind.REVEAL) as
-        | OperationContentsAndResultReveal
-        | undefined;
-    } else {
-      throw new ObservableError('Unable to fetch operation result');
-    }
+    return operationResult.find((x) => x.kind === OpKind.REVEAL) as
+      | OperationContentsAndResultReveal
+      | undefined;
   }
 
   public async delegationOperation() {
     const operationResult = await this.operationResults();
-    if (operationResult) {
-      return operationResult.find((x) => x.kind === OpKind.DELEGATION) as
-        | OperationContentsAndResultDelegation
-        | undefined;
-    } else {
-      throw new ObservableError('Unable to fetch operation result');
-    }
+    return operationResult.find((x) => x.kind === OpKind.DELEGATION) as
+      | OperationContentsAndResultDelegation
+      | undefined;
   }
 
   public async status(): Promise<OperationStatus> {

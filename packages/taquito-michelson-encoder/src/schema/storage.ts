@@ -6,11 +6,9 @@ import {
 } from '@taquito/rpc';
 import { BigMapToken } from '../tokens/bigmap';
 import { createToken } from '../tokens/createToken';
-import { MapToken } from '../tokens/map';
 import { OrToken } from '../tokens/or';
 import { PairToken } from '../tokens/pair';
 import { TicketToken } from '../tokens/ticket';
-import { TicketDeprecatedToken } from '../tokens/ticket-deprecated';
 import {
   BigMapKeyType,
   Semantic,
@@ -20,13 +18,14 @@ import {
 } from '../tokens/token';
 import {
   InvalidRpcResponseError,
-  InvalidBigMapSchemaError,
-  InvalidBigMapDiffError,
+  InvalidBigMapSchema,
+  InvalidBigMapDiff,
   BigMapEncodingError,
   StorageEncodingError,
   MissingArgumentError,
-} from './errors';
-import { TokenSchema } from './types';
+} from './error';
+import { RpcTransaction } from './model';
+import { Falsy, TokenSchema } from './types';
 
 const schemaTypeSymbol = Symbol.for('taquito-schema-type-symbol');
 
@@ -60,13 +59,7 @@ function collapse(
   return extended;
 }
 
-export function deepEqual(
-  a: MichelsonV1Expression | undefined,
-  b: MichelsonV1Expression | undefined
-): boolean {
-  if (a === undefined || b === undefined) {
-    return a === b;
-  }
+function deepEqual(a: MichelsonV1Expression, b: MichelsonV1Expression): boolean {
   const ac = collapse(a);
   const bc = collapse(b);
   return (
@@ -85,7 +78,7 @@ export function deepEqual(
 }
 
 /**
- * @remarks Our current smart contract abstraction feature is currently in preview. Its API is not final, and it may not cover every use case (yet). We will greatly appreciate any feedback on this feature.
+ * @warn Our current smart contract abstraction feature is currently in preview. It's API is not final, and it may not cover every use case (yet). We will greatly appreciate any feedback on this feature.
  */
 export class Schema {
   private root: Token;
@@ -99,32 +92,29 @@ export class Schema {
   // TODO: Should we deprecate this?
   private bigMap?: BigMapToken;
 
-  /**
-   * @throws {@link InvalidRpcResponseError}
-   */
   static fromRPCResponse(val: { script: ScriptResponse }) {
-    if (!val) {
-      throw new InvalidRpcResponseError(val, 'the RPC response is empty');
-    }
-    if (!val.script) {
-      throw new InvalidRpcResponseError(val, 'the RPC response has no script');
-    }
-    if (!Array.isArray(val.script.code)) {
-      throw new InvalidRpcResponseError(val, 'The response.script.code should be an array');
-    }
-    let code = val.script.code;
-    while (code.length === 1 && Array.isArray(code[0])) {
-      code = code[0];
-    }
-    const storage = code.find(
-      (x) => 'prim' in x && x.prim === 'storage'
-    ) as MichelsonV1ExpressionExtended;
+    const storage: Falsy<MichelsonV1ExpressionExtended> =
+      val &&
+      val.script &&
+      Array.isArray(val.script.code) &&
+      (val.script.code.find((x) => {
+        if (!Array.isArray(x)) {
+          const checkExtended = x as MichelsonV1ExpressionExtended;
+          if (checkExtended.prim) {
+            return checkExtended.prim === 'storage';
+          } else {
+            return false;
+          }
+        } else {
+          // storage passed along as original storage value
+          this.fromRPCResponse({ script: { code: x, storage: val.script.storage } });
+        }
+      }) as MichelsonV1ExpressionExtended);
+
     if (!storage || !Array.isArray(storage.args)) {
-      throw new InvalidRpcResponseError(
-        val,
-        'The response.script.code has an element of type {prim: "storage"}, but its args is not an array'
-      );
+      throw new InvalidRpcResponseError(val.script);
     }
+
     return new Schema(storage.args[0]);
   }
 
@@ -164,13 +154,6 @@ export class Schema {
     return this.removeTopLevelAnnotation(storage);
   }
 
-  /**
-   * Validates that a value matches the schema type.
-   * Performs type checking with special handling for BigMap, Ticket, and nested Map tokens.
-   *
-   * @param val - The value to validate against the schema
-   * @returns Returns true if validation passes, false if validation fails
-   */
   Typecheck(val: any) {
     if (this.root instanceof BigMapToken && Number.isInteger(Number(val))) {
       return true;
@@ -178,35 +161,21 @@ export class Schema {
     if (this.root instanceof TicketToken && val.ticketer && val.value && val.amount) {
       return true;
     }
-    if (this.root instanceof TicketDeprecatedToken && val.ticketer && val.value && val.amount) {
-      return true;
-    }
-    if (this.root instanceof MapToken && this.root.ValueSchema instanceof BigMapToken) {
-      return true;
-    }
-
     try {
       this.root.EncodeObject(val);
       return true;
-    } catch (error) {
+    } catch (ex) {
       return false;
     }
   }
 
-  /**
-   * @throws {@link InvalidBigMapSchemaError}
-   * @throws {@link InvalidBigMapDiffError}
-   */
   ExecuteOnBigMapDiff(diff: any[], semantics?: Semantic) {
     if (!this.bigMap) {
-      throw new InvalidBigMapSchemaError('Big map schema is undefined');
+      throw new InvalidBigMapSchema('Big map schema is undefined');
     }
 
     if (!Array.isArray(diff)) {
-      throw new InvalidBigMapDiffError(
-        `Big map diff must be an array, got: ${JSON.stringify(diff)}`,
-        diff
-      );
+      throw new InvalidBigMapDiff('Big map diff must be an array');
     }
 
     const eltFormat = diff.map(({ key, value }) => ({ args: [key, value] }));
@@ -214,37 +183,26 @@ export class Schema {
     return this.bigMap.Execute(eltFormat, semantics);
   }
 
-  /**
-   * @throws {@link InvalidBigMapSchemaError}
-   */
   ExecuteOnBigMapValue(key: any, semantics?: Semantic) {
     if (!this.bigMap) {
-      throw new InvalidBigMapSchemaError('Big map schema is undefined');
+      throw new InvalidBigMapSchema('No big map schema');
     }
 
     return this.bigMap.ValueSchema.Execute(key, semantics);
   }
 
-  /**
-   * @throws {@link InvalidBigMapSchemaError}
-   * @throws {@link BigMapEncodingError}
-   */
   EncodeBigMapKey(key: BigMapKeyType) {
     if (!this.bigMap) {
-      throw new InvalidBigMapSchemaError('Big map schema is undefined');
+      throw new InvalidBigMapSchema('Big map schema is undefined');
     }
 
     try {
       return this.bigMap.KeySchema.ToBigMapKey(key);
     } catch (ex) {
-      throw new BigMapEncodingError('key', ex, this.bigMap.KeySchema, key);
+      throw new BigMapEncodingError('big map key', ex);
     }
   }
 
-  /**
-   * @throws TokenValidationError
-   * @throws {@link StorageEncodingError}
-   */
   Encode(value?: any, semantics?: SemanticEncoding) {
     try {
       return this.root.EncodeObject(value, semantics);
@@ -252,12 +210,21 @@ export class Schema {
       if (ex instanceof TokenValidationError) {
         throw ex;
       }
-      throw new StorageEncodingError('storage object', ex, this.root, value, semantics);
+
+      throw new StorageEncodingError('storage object', ex);
     }
   }
 
   /**
-   * Produce a representation of the storage schema.
+   * @deprecated ExtractSchema has been deprecated in favor of generateSchema
+   *
+   */
+  ExtractSchema() {
+    return this.removeTopLevelAnnotation(this.root.ExtractSchema());
+  }
+
+  /**
+   * @description Produce a representation of the storage schema.
    * Note: Provide guidance on how to write the storage object for the origination operation with Taquito.
    */
   generateSchema(): TokenSchema {
@@ -265,7 +232,28 @@ export class Schema {
   }
 
   /**
-   * Look up in top-level pairs of the storage to find a value matching the specified type
+   * @deprecated
+   */
+  ComputeState(tx: RpcTransaction[], state: any) {
+    if (!this.bigMap) {
+      throw new InvalidBigMapSchema('Big map schema is undefined');
+    }
+
+    const bigMap = tx.reduce((prev, current) => {
+      return {
+        ...prev,
+        ...this.ExecuteOnBigMapDiff(current.contents[0].metadata.operation_result.big_map_diff),
+      };
+    }, {});
+
+    return {
+      ...this.Execute(state),
+      [this.bigMap.annot()]: bigMap,
+    };
+  }
+
+  /**
+   * @description Look up in top-level pairs of the storage to find a value matching the specified type
    *
    * @returns The first value found that match the type or `undefined` if no value is found
    *
@@ -278,9 +266,6 @@ export class Schema {
   }
 
   // TODO check these type casts
-  /**
-   * @throws {@link MissingArgumentError}
-   */
   private findValue(
     schema: MichelsonV1Expression,
     storage: any,
@@ -304,7 +289,7 @@ export class Schema {
     }
   }
   /**
-   * Look up the schema to find any occurrence of a particular token.
+   * @description Look up the schema to find any occurrence of a particular token.
    *
    * @returns an array of tokens of the specified kind or an empty array if no token was found
    *

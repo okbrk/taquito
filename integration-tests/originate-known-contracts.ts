@@ -2,77 +2,33 @@ import { CONFIGS } from './config';
 import { MichelsonMap, OriginateParams, RpcForger, TezosToolkit } from '@taquito/taquito';
 import { singleSaplingStateContractJProtocol } from './data/single_sapling_state_contract_jakarta_michelson';
 import { fa2ForTokenMetadataView } from './data/fa2-for-token-metadata-view';
-import { stringToBytes } from '@taquito/utils';
-import BigNumberJs from 'bignumber.js';
-type BigNumber = InstanceType<typeof BigNumberJs>;
-const BigNumber = BigNumberJs;
+import { char2Bytes } from '@taquito/utils';
+import BigNumber from 'bignumber.js';
 import { codeViewsTopLevel } from './data/contract_views_top_level';
 import { knownBigMapContract } from './data/knownBigMapContract';
 import { knownContract } from './data/knownContract';
-import * as fs from 'fs/promises';
-import { ticketsSendTz } from './data/code_with_ticket_transfer';
+import * as fs from 'fs';
 
-// before running the test with secret key make sure tz2RqxsYQyFuP9amsmrr25x9bUcBMWXGvjuD is funded
 const MUTEZ_UNIT = new BigNumber(1000000);
 
-CONFIGS().forEach(({ lib, setup, networkName }) => {
+CONFIGS().forEach(({ lib, setup, protocol }) => {
   const tezos = lib;
   let keyPkh: string = "";
   let keyInitialBalance: BigNumber = new BigNumber(0);
 
   (async () => {
     await setup(true);
-    console.log(`networkName: ${networkName}`);
-
-    let outputFile = await fs.open(`known-contracts-${networkName.toLowerCase()}.ts`, 'w');
-    let writeOutput = async (line: string): Promise<void> => {
-      return fs
-        .writeFile(outputFile, line + '\n')
-        .catch((err: any) => {
-          console.error(err);
-        });
-    };
-    let appendOutput = async (line: string): Promise<void> => {
-      return fs
-        .appendFile(outputFile, line + '\n')
-        .catch((err: any) => {
-          console.error(err);
-        });
-    };
-    let originateKnownContract = async (contractName: string, tezos: TezosToolkit, contractOriginateParams: OriginateParams): Promise<void> => {
-      try {
-        const operation = await tezos.contract.originate(contractOriginateParams);
-        await operation.confirmation();
-        const contract = await operation.contract();
-        console.log(`known ${contractName} address:  ${contract.address}`);
-        // Set the contract's address for subsequent GitHub actions
-        const contractNameCapitalized = contractName.charAt(0).toUpperCase() + contractName.slice(1);
-        const outputAddressVariableName: string = `known${contractNameCapitalized}Address`;
-        console.log(`::set-output name=${outputAddressVariableName}::${contract.address}\n`);
-        appendOutput(`  ${contractName}: "${contract.address}",`);
-      } catch (e: any) {
-        console.error(`Failed to deploy ${contractName} known contract | Error: ${e.stack}`);
-
-        if (e.name === "ForgingMismatchError") {
-          console.log(`Composite forger failed to originate ${contractName}. Trying to originate the contract by using RPC forger...`);
-
-          tezos.setForgerProvider(tezos.getFactory(RpcForger)());
-
-          originateKnownContract(contractName, tezos, contractOriginateParams);
-        } else {
-          appendOutput(`  ${contractName}: "",`);
-        }
+    fs.writeFile(`known-contracts-${protocol.substring(0,9)}.ts`, '', (err: any) => {
+      if (err) {
+        console.error(err);
       }
-    };
-
-    await writeOutput("import { KnownContracts } from './known-contracts';")
-    await appendOutput("export const knownContracts" + networkName.charAt(0) + networkName.slice(1).toLowerCase() + ": KnownContracts = {");
+    });
 
     keyPkh = await tezos.signer.publicKeyHash();
     keyInitialBalance = await tezos.tz.getBalance(keyPkh);
 
     // KnownContract
-    await originateKnownContract('contract', tezos, {
+    await originateKnownContract('Contract', tezos, {
       balance: '0',
       code: knownContract,
       init: {
@@ -94,7 +50,7 @@ CONFIGS().forEach(({ lib, setup, networkName }) => {
     const allowancesBigMap = new MichelsonMap();
     const ledgerBigMap = new MichelsonMap();
     ledgerBigMap.set('tz1btkXVkVFWLgXa66sbRJa8eeUSwvQFX4kP', { allowances: allowancesBigMap, balance: '100' });
-    await originateKnownContract('bigMapContract', tezos, {
+    await originateKnownContract('BigMapContract', tezos, {
       code: knownBigMapContract,
       storage: {
         ledger: ledgerBigMap,
@@ -122,7 +78,7 @@ CONFIGS().forEach(({ lib, setup, networkName }) => {
     );
 
     const url = 'https://storage.googleapis.com/tzip-16/fa2-views.json';
-    const bytesUrl = stringToBytes(url);
+    const bytesUrl = char2Bytes(url);
     const metadata = new MichelsonMap();
     metadata.set('', bytesUrl);
 
@@ -130,15 +86,15 @@ CONFIGS().forEach(({ lib, setup, networkName }) => {
 
     const tokens = new MichelsonMap();
     const metadataMap0 = new MichelsonMap();
-    metadataMap0.set('', stringToBytes('https://storage.googleapis.com/tzip-16/token-metadata.json'));
-    metadataMap0.set('name', stringToBytes('Name from URI is prioritized!'));
+    metadataMap0.set('', char2Bytes('https://storage.googleapis.com/tzip-16/token-metadata.json'));
+    metadataMap0.set('name', char2Bytes('Name from URI is prioritized!'));
     const metadataMap1 = new MichelsonMap();
-    metadataMap1.set('name', stringToBytes('AliceToken'));
-    metadataMap1.set('symbol', stringToBytes('ALC'));
+    metadataMap1.set('name', char2Bytes('AliceToken'));
+    metadataMap1.set('symbol', char2Bytes('ALC'));
     metadataMap1.set('decimals', '30');
-    metadataMap1.set('extra', stringToBytes('Add more data'));
+    metadataMap1.set('extra', char2Bytes('Add more data'));
     const metadataMap2 = new MichelsonMap();
-    metadataMap2.set('name', stringToBytes('Invalid token metadata'));
+    metadataMap2.set('name', char2Bytes('Invalid token metadata'));
     tokens.set('0', {
       metadata_map: metadataMap0,
       total_supply: '20000',
@@ -152,7 +108,7 @@ CONFIGS().forEach(({ lib, setup, networkName }) => {
       total_supply: '20000',
     });
 
-    await originateKnownContract('tzip12BigMapOffChainContract', tezos, {
+    await originateKnownContract('Tzip12BigMapOffChainContract', tezos, {
       code: fa2ForTokenMetadataView,
       storage: {
         administrator: 'tz1bwsEWCwSEXdRvnJxvegQZKeX5dj6oKEys',
@@ -166,25 +122,30 @@ CONFIGS().forEach(({ lib, setup, networkName }) => {
     });
 
     // KnownSaplingContract
-    await originateKnownContract('saplingContract', tezos, {
+    await originateKnownContract('SaplingContract', tezos, {
       code: singleSaplingStateContractJProtocol(),
       init: '{}'
     });
 
     // knownOnChainViewContract
-    await originateKnownContract('onChainViewContractAddress', tezos, {
+    await originateKnownContract('OnChainViewContractAddress', tezos, {
       code: codeViewsTopLevel,
       storage: 2
     });
 
-    // knownTicketContract
-    await originateKnownContract('ticketContract', tezos, {
-      code: ticketsSendTz,
-      storage: null
-    });
-
-    await appendOutput('};');
-    await outputFile.close();
+    // originate tx rollup
+    try {
+    const op = await tezos.contract.txRollupOriginate({});
+    await op.confirmation();
+    console.log(`txRollupAddress:  ${op.originatedRollup}`);
+      fs.appendFile(`known-contracts-${protocol.substring(0,9)}.ts`, `export const txRollupAddress${protocol.substring(0,9)} = "${op.originatedRollup}";\n`, (err: any) => {
+        if (err) {
+          console.error(err);
+        }
+      });
+    } catch (e: any) {
+      console.error(`Failed to originate tx rollup | Error: ${e.stack}`);
+    }
 
     console.log(`
 ################################################################################
@@ -196,6 +157,30 @@ Total XTZ Spent : ${keyInitialBalance.minus(await tezos.tz.getBalance(keyPkh)).d
 `)
   })();
 
+
+  async function originateKnownContract(contractName: string, tezos: TezosToolkit, contractOriginateParams: OriginateParams): Promise<void> {
+    try {
+      const operation = await tezos.contract.originate(contractOriginateParams);
+      const contract = await operation.contract();
+      console.log(`known${contractName} address:  ${contract.address}`);
+      console.log(`::set-output name=known${contractName}Address::${contract.address}\n`);
+      fs.appendFile(`known-contracts-${protocol.substring(0,9)}.ts`, `export const known${contractName}${protocol.substring(0,9)} = "${contract.address}";\n`, (err: any) => {
+        if (err) {
+          console.error(err);
+        }
+      });
+    } catch (e: any) {
+      console.error(`Failed to deploy ${contractName} known contract | Error: ${e.stack}`);
+
+      if (e.name === "ForgingMismatchError") {
+        console.log(`Composite forger failed to originate ${contractName}. Trying to originate the contract by using RPC forger...`);
+
+        tezos.setForgerProvider(tezos.getFactory(RpcForger)());
+
+        await originateKnownContract(contractName, tezos, contractOriginateParams);
+      }
+    }
+  }
 
   async function printBalance(pkh: string, tezos: TezosToolkit): Promise<void> {
     let balance = await tezos.tz.getBalance(pkh);

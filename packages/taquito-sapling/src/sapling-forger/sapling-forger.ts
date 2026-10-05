@@ -1,16 +1,15 @@
-import { Buffer } from 'buffer';
 import {
   SaplingTransactionInput,
   SaplingTransaction,
   SaplingTransactionOutput,
   SaplingTransactionPlaintext,
 } from '../types';
-import { stringToBytes, toHexBuf } from '@taquito/utils';
+import { char2Bytes, toHexBuf } from '@taquito/utils';
 import BigNumber from 'bignumber.js';
 
 export class SaplingForger {
   /**
-   * Forge sapling transactions
+   * @description Forge sapling transactions
    * @param spendDescriptions the list of spend descriptions
    * @param outputDescriptions the list of output descriptions
    * @param signature signature hash
@@ -39,7 +38,7 @@ export class SaplingForger {
   }
 
   /**
-   * Forge list of spend descriptions
+   * @description Forge list of spend descriptions
    * @param spendDescriptions list of spend descriptions
    * @returns concatenated forged bytes of type Buffer
    */
@@ -65,7 +64,7 @@ export class SaplingForger {
   }
 
   /**
-   * Forge list of output descriptions
+   * @description Forge list of output descriptions
    * @param outputDescriptions list of output descriptions
    * @returns concatenated forged bytes of type Buffer
    */
@@ -107,7 +106,7 @@ export class SaplingForger {
 
   forgeTransactionPlaintext(txPlainText: SaplingTransactionPlaintext) {
     const encodedMemo = Buffer.from(
-      stringToBytes(txPlainText.memo).padEnd(txPlainText.memoSize, '0'),
+      char2Bytes(txPlainText.memo).padEnd(txPlainText.memoSize, '0'),
       'hex'
     );
     return Buffer.concat([

@@ -1,11 +1,8 @@
-import { Buffer } from 'buffer';
 import blake from 'blakejs';
 import { secretBox } from '@stablelib/nacl';
 import { DEFAULT_MEMO, KDF_KEY, OCK_KEY } from '../constants';
 import { SaplingForger } from '../sapling-forger/sapling-forger';
-import BigNumberJs from 'bignumber.js';
-type BigNumber = InstanceType<typeof BigNumberJs>;
-const BigNumber = BigNumberJs;
+import BigNumber from 'bignumber.js';
 import {
   Input,
   SaplingTransactionOutput,
@@ -20,7 +17,7 @@ import {
   SaplingTransactionParams,
 } from '../types';
 import { SaplingDiffResponse } from '@taquito/rpc';
-import { b58DecodeAndCheckPrefix, PrefixV2 } from '@taquito/utils';
+import { b58cdecode, Prefix, prefix } from '@taquito/utils';
 import { TzReadProvider } from '@taquito/taquito';
 import { convertValueToBigNumber } from '../sapling-tx-viewer/helpers';
 import { SaplingState } from '../sapling-state/sapling-state';
@@ -76,13 +73,10 @@ export class SaplingTransactionBuilder {
         const inputs: SaplingTransactionInput[] = [];
 
         for (const i in saplingTransactionParams) {
-          const [address] = b58DecodeAndCheckPrefix(saplingTransactionParams[i].to, [
-            PrefixV2.SaplingAddress,
-          ]);
           outputs.push(
             await this.prepareSaplingOutputDescription({
               saplingContext,
-              address,
+              address: b58cdecode(saplingTransactionParams[i].to, prefix[Prefix.ZET1]),
               amount: saplingTransactionParams[i].amount,
               memo: saplingTransactionParams[i].memo,
               randomCommitmentTrapdoor: rcm,
@@ -132,13 +126,11 @@ export class SaplingTransactionBuilder {
 
         for (const i in saplingTransactionParams) {
           sumAmountOutput = sumAmountOutput.plus(new BigNumber(saplingTransactionParams[i].amount));
-          const [address] = b58DecodeAndCheckPrefix(saplingTransactionParams[i].to, [
-            PrefixV2.SaplingAddress,
-          ]);
+
           outputs.push(
             await this.prepareSaplingOutputDescription({
               saplingContext,
-              address,
+              address: b58cdecode(saplingTransactionParams[i].to, prefix[Prefix.ZET1]),
               amount: saplingTransactionParams[i].amount,
               memo: saplingTransactionParams[i].memo,
               randomCommitmentTrapdoor,
@@ -149,11 +141,11 @@ export class SaplingTransactionBuilder {
 
         if (chosenInputs.sumSelectedInputs.isGreaterThan(sumAmountOutput)) {
           const payBackAddress = (await saplingViewer.getAddress()).address;
-          const [address] = b58DecodeAndCheckPrefix(payBackAddress, [PrefixV2.SaplingAddress]);
+
           const { payBackOutput, payBackAmount } = await this.createPaybackOutput(
             {
               saplingContext,
-              address,
+              address: b58cdecode(payBackAddress, prefix[Prefix.ZET1]),
               amount: txTotalAmount.toString(),
               memo: DEFAULT_MEMO,
               randomCommitmentTrapdoor: randomCommitmentTrapdoor,

@@ -21,6 +21,16 @@ describe('Lambda token', () => {
             args: [{ prim: 'unit' }, { prim: 'list', args: [{ prim: 'operation' }] }],
             annots: ['%proposalLambda']
         });
+        const result = schema.ExtractSchema();
+        expect(result).toEqual({
+            lambda: {
+                parameters: 'unit',
+                returns: {
+                    list: "operation",
+                }
+            }
+        });
+
         expect(schema.generateSchema()).toEqual({
             __michelsonType: 'lambda',
             schema: {

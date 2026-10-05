@@ -1,112 +1,36 @@
-import {
-  DelegateParams,
-  FailingNoopParams,
-  IncreasePaidStorageParams,
-  OriginateParams,
-  TransferParams,
-  StakeParams,
-  UnstakeParams,
-  FinalizeUnstakeParams,
-  TransferTicketParams,
-  RegisterGlobalConstantParams,
-} from '../operations/types';
+import { DelegateParams, OriginateParams, TransferParams } from '../operations/types';
 
 export type WalletDefinedFields = 'source';
 
 export type WalletTransferParams = Omit<TransferParams, WalletDefinedFields>;
 
-export type WalletStakeParams = Omit<StakeParams, WalletDefinedFields>;
-
-export type WalletUnstakeParams = Omit<UnstakeParams, WalletDefinedFields>;
-
-export type WalletFinalizeUnstakeParams = Omit<FinalizeUnstakeParams, WalletDefinedFields>;
-
-export type WalletOriginateParams<TStorage = any> = Omit<
-  OriginateParams<TStorage>,
-  WalletDefinedFields
->;
+export type WalletOriginateParams<TStorage = any> = Omit<OriginateParams<TStorage>, WalletDefinedFields>;
 
 export type WalletDelegateParams = Omit<DelegateParams, WalletDefinedFields>;
 
-export type WalletFailingNoopParams = Omit<FailingNoopParams, WalletDefinedFields>;
-
-export type WalletIncreasePaidStorageParams = Omit<IncreasePaidStorageParams, WalletDefinedFields>;
-
-export type WalletTransferTicketParams = Omit<TransferTicketParams, WalletDefinedFields>;
-
-export type WalletRegisterGlobalConstantParams = Omit<RegisterGlobalConstantParams, WalletDefinedFields>;
-
 export interface WalletProvider {
   /**
-   * Request the public key hash from the wallet
+   * @description Request the public key hash from the wallet
    */
   getPKH: () => Promise<string>;
 
   /**
-   * Request the public key from the wallet
-   */
-  getPK: () => Promise<string>;
-
-  /**
-   * Transform WalletTransferParams into a format compliant with the underlying wallet
+   * @description Transform WalletTransferParams into a format compliant with the underlying wallet
    */
   mapTransferParamsToWalletParams: (params: () => Promise<WalletTransferParams>) => Promise<any>;
 
   /**
-   * Transform WalletTransferTicketParams into a format compliant with the underlying wallet
-   */
-  mapTransferTicketParamsToWalletParams: (
-    params: () => Promise<WalletTransferTicketParams>
-  ) => Promise<any>;
-
-  /**
-   * Transform WalletRegisterGlobalConstantParams into a format compliant with the underlying wallet
-   */
-  mapRegisterGlobalConstantParamsToWalletParams: (
-    params: () => Promise<WalletRegisterGlobalConstantParams>
-  ) => Promise<any>;
-
-  /**
-   * Transform WalletStakeParams into a format compliant with the underlying wallet
-   */
-  mapStakeParamsToWalletParams: (params: () => Promise<WalletStakeParams>) => Promise<any>;
-
-  /**
-   * Transform WalletUnstakeParams into a format compliant with the underlying wallet
-   */
-  mapUnstakeParamsToWalletParams: (params: () => Promise<WalletUnstakeParams>) => Promise<any>;
-
-  /**
-   * Transform WalletFinalizeUnstakeParams into a format compliant with the underlying wallet
-   */
-  mapFinalizeUnstakeParamsToWalletParams: (
-    params: () => Promise<WalletFinalizeUnstakeParams>
-  ) => Promise<any>;
-
-  /**
-   * Transform WalletOriginateParams into a format compliant with the underlying wallet
+   * @description Transform WalletOriginateParams into a format compliant with the underlying wallet
    */
   mapOriginateParamsToWalletParams: (params: () => Promise<WalletOriginateParams>) => Promise<any>;
 
   /**
-   * Transform WalletDelegateParams into a format compliant with the underlying wallet
+   * @description Transform WalletDelegateParams into a format compliant with the underlying wallet
    */
   mapDelegateParamsToWalletParams: (params: () => Promise<WalletDelegateParams>) => Promise<any>;
 
   /**
-   * Transform WalletIncreasePaidStorageParams into a format compliant with the underlying wallet
-   */
-  mapIncreasePaidStorageWalletParams: (
-    params: () => Promise<WalletIncreasePaidStorageParams>
-  ) => Promise<any>;
-
-  /**
-   * Request the wallet to send an operation batch
+   * @description Request the wallet to send an operation batch
    */
   sendOperations: (params: any[]) => Promise<string>;
-
-  /**
-   * Request the wallet to sign a payload
-   */
-  sign(bytes: string, watermark?: Uint8Array): Promise<string>;
 }

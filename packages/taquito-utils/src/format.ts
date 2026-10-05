@@ -22,12 +22,7 @@ export function format(
   to: Format = 'mutez',
   amount: number | string | BigNumber
 ) {
-  let bigNum: BigNumber;
-  try {
-    bigNum = new BigNumber(amount);
-  } catch {
-    return amount;
-  }
+  const bigNum = new BigNumber(amount);
   if (bigNum.isNaN()) {
     return amount;
   }

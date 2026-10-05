@@ -4,32 +4,48 @@
  */
 import { HttpBackend, HttpResponseError, STATUS_CODE } from '@taquito/http-utils';
 import {
+  b58cdecode,
+  b58cencode,
   buf2hex,
   hex2buf,
+  isValidPrefix,
   mergebuf,
+  prefix,
   verifySignature,
   validateKeyHash,
   ValidationResult,
-  PrefixV2,
-  b58DecodeAndCheckPrefix,
-  getPkhfromPk,
-  b58Encode,
+  InvalidKeyHashError,
+  ProhibitedActionError,
+  InvalidSignatureError,
 } from '@taquito/utils';
+import { hash } from '@stablelib/blake2b';
 import toBuffer from 'typedarray-to-buffer';
 import {
   BadSigningDataError,
+  KeyNotFoundError,
   OperationNotAuthorizedError,
-  PublicKeyVerificationError,
-  SignatureVerificationError,
+  PublicKeyMismatch,
 } from './errors';
-import { Signer } from '@taquito/core';
-import {
-  InvalidSignatureError,
-  InvalidKeyHashError,
-  ProhibitedActionError,
-  PublicKeyNotFoundError,
-  ParameterValidationError,
-} from '@taquito/core';
+import { Signer } from '@taquito/taquito';
+
+/**
+ *  @category Error
+ *  @description Error
+ */
+export class SignatureVerificationFailedError extends Error {
+  public name = 'SignatureVerificationFailedError';
+  constructor(public bytes: string, public signature: string) {
+    super(
+      `
+        Signature failed verification against public key: 
+        {
+          bytes: ${bytes},
+          signature: ${signature}
+        }
+      `
+    );
+  }
+}
 
 interface PublicKeyResponse {
   public_key: string;
@@ -39,11 +55,34 @@ interface SignResponse {
   signature: string;
 }
 
+type curves = 'ed' | 'p2' | 'sp';
+
 export interface RemoteSignerOptions {
   headers?: { [key: string]: string };
 }
 
 export { VERSION } from './version';
+
+const pref = {
+  ed: {
+    pk: prefix['edpk'],
+    sk: prefix['edsk'],
+    pkh: prefix.tz1,
+    sig: prefix.edsig,
+  },
+  p2: {
+    pk: prefix['p2pk'],
+    sk: prefix['p2sk'],
+    pkh: prefix.tz3,
+    sig: prefix.p2sig,
+  },
+  sp: {
+    pk: prefix['sppk'],
+    sk: prefix['spsk'],
+    pkh: prefix.tz2,
+    sig: prefix.spsig,
+  },
+};
 
 export class RemoteSigner implements Signer {
   constructor(
@@ -52,9 +91,8 @@ export class RemoteSigner implements Signer {
     private options: RemoteSignerOptions = {},
     private http = new HttpBackend()
   ) {
-    const pkhValidation = validateKeyHash(this.pkh);
-    if (pkhValidation !== ValidationResult.VALID) {
-      throw new InvalidKeyHashError(this.pkh, pkhValidation);
+    if (validateKeyHash(this.pkh) !== ValidationResult.VALID) {
+      throw new InvalidKeyHashError(this.pkh);
     }
   }
 
@@ -64,13 +102,7 @@ export class RemoteSigner implements Signer {
 
   private createURL(path: string) {
     // Trim trailing slashes because it is assumed to be included in path
-    // the regex solution is prone to ReDoS. Please see: https://stackoverflow.com/questions/6680825/return-string-without-trailing-slash#comment124306698_6680877
-    // We also got a CodeQL error for the regex based solution
-    let rootUrl = this.rootUrl;
-    while (rootUrl.endsWith('/')) {
-      rootUrl = rootUrl.slice(0, -1);
-    }
-    return `${rootUrl}${path}`;
+    return `${this.rootUrl.replace(/\/+$/g, '')}${path}`;
   }
 
   async publicKey(): Promise<string> {
@@ -84,7 +116,7 @@ export class RemoteSigner implements Signer {
     } catch (ex) {
       if (ex instanceof HttpResponseError) {
         if (ex.status === STATUS_CODE.NOT_FOUND) {
-          throw new PublicKeyNotFoundError(this.pkh, ex);
+          throw new KeyNotFoundError(`Key not found: ${this.pkh}`, ex);
         }
       }
       throw ex;
@@ -110,45 +142,40 @@ export class RemoteSigner implements Signer {
         },
         watermarkedBytes
       );
+      const pref = signature.startsWith('sig')
+        ? signature.substring(0, 3)
+        : signature.substring(0, 5);
 
-      const [decoded] = (() => {
-        try {
-          return b58DecodeAndCheckPrefix(signature, [
-            PrefixV2.GenericSignature,
-            PrefixV2.Secp256k1Signature,
-            PrefixV2.Ed25519Signature,
-            PrefixV2.P256Signature,
-          ]);
-        } catch (err: unknown) {
-          if (err instanceof ParameterValidationError) {
-            throw new InvalidSignatureError(signature, err.result);
-          } else {
-            throw err;
-          }
-        }
-      })();
+      if (!isValidPrefix(pref)) {
+        throw new InvalidSignatureError(signature, 'Unsupported signature given by remote signer');
+      }
+
+      const decoded = b58cdecode(signature, prefix[pref]);
 
       const pk = await this.publicKey();
       await this.verifyPublicKey(pk);
       const signatureVerified = verifySignature(watermarkedBytes, pk, signature);
       if (!signatureVerified) {
-        throw new SignatureVerificationError(watermarkedBytes, signature);
+        throw new SignatureVerificationFailedError(watermarkedBytes, signature);
       }
 
       return {
         bytes,
-        sig: b58Encode(decoded, PrefixV2.GenericSignature),
+        sig: b58cencode(decoded, prefix.sig),
         prefixSig: signature,
         sbytes: bytes + buf2hex(toBuffer(decoded)),
       };
     } catch (ex) {
       if (ex instanceof HttpResponseError) {
         if (ex.status === STATUS_CODE.NOT_FOUND) {
-          throw new PublicKeyNotFoundError(this.pkh, ex);
+          throw new KeyNotFoundError(`Key not found: ${this.pkh}`, ex);
         } else if (ex.status === STATUS_CODE.FORBIDDEN) {
           throw new OperationNotAuthorizedError('Signing Operation not authorized', ex);
         } else if (ex.status === STATUS_CODE.BAD_REQUEST) {
-          throw new BadSigningDataError(ex, bytes, watermark);
+          throw new BadSigningDataError('Invalid data', ex, {
+            bytes,
+            watermark,
+          });
         }
       }
       throw ex;
@@ -156,9 +183,12 @@ export class RemoteSigner implements Signer {
   }
 
   async verifyPublicKey(publicKey: string) {
-    const pkh = getPkhfromPk(publicKey);
-    if (this.pkh !== pkh) {
-      throw new PublicKeyVerificationError(publicKey, pkh, this.pkh);
+    const curve = publicKey.substring(0, 2) as curves;
+    const _publicKey = b58cdecode(publicKey, pref[curve].pk);
+
+    const publicKeyHash = b58cencode(hash(_publicKey, 20), pref[curve].pkh);
+    if (publicKeyHash !== this.pkh) {
+      throw new PublicKeyMismatch(publicKeyHash, this.pkh);
     }
   }
 }

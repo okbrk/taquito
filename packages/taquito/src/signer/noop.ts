@@ -1,8 +1,21 @@
-import { Signer } from '@taquito/core';
-import { UnconfiguredSignerError } from './errors';
+import { Signer } from './interface';
+
 /**
- * Default signer implementation which does nothing and produce invalid signature
- * @throw {@link UnconfiguredSignerError}
+ *  @category Error
+ *  @description Error that indicates the signer has been unconfigured in the TezosToolkit instance
+ */
+export class UnconfiguredSignerError extends Error {
+  name = 'UnconfiguredSignerError';
+
+  constructor() {
+    super(
+      'No signer has been configured. Please configure one by calling setProvider({signer}) on your TezosToolkit instance.'
+    );
+  }
+}
+
+/**
+ * @description Default signer implementation which does nothing and produce invalid signature
  */
 export class NoopSigner implements Signer {
   async publicKey(): Promise<string> {

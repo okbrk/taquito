@@ -1,4 +1,4 @@
-import { Prim, Expr, IntLiteral, StringLiteral, BytesLiteral } from './micheline';
+import { Prim, Expr, IntLiteral, StringLiteral } from './micheline';
 import { Tuple, NoArgs, ReqArgs, MichelsonError } from './utils';
 import {
   MichelsonCode,
@@ -77,7 +77,6 @@ const noArgInstructionIDs: Record<MichelsonNoArgInstruction['prim'], true> = {
   SUB: true,
   SWAP: true,
   TICKET: true,
-  TICKET_DEPRECATED: true,
   TOTAL_VOTING_POWER: true,
   TRANSFER_TOKENS: true,
   UNIT: true,
@@ -87,11 +86,6 @@ const noArgInstructionIDs: Record<MichelsonNoArgInstruction['prim'], true> = {
   OPEN_CHEST: true,
   SUB_MUTEZ: true,
   MIN_BLOCK_TIME: true,
-  BYTES: true,
-  NAT: true,
-  IS_IMPLICIT_ACCOUNT: true,
-  INDEX_ADDRESS: true,
-  GET_ADDRESS_INDEX: true,
 };
 
 export const instructionIDs: Record<MichelsonInstruction['prim'], true> = Object.assign(
@@ -116,7 +110,6 @@ export const instructionIDs: Record<MichelsonInstruction['prim'], true> = Object
     IF_NONE: true,
     ITER: true,
     LAMBDA: true,
-    LAMBDA_REC: true,
     LEFT: true,
     LOOP: true,
     LOOP_LEFT: true,
@@ -168,7 +161,6 @@ const typeIDs: Record<MichelsonTypeID, true> = Object.assign({}, simpleComparabl
   bls12_381_g2: true,
   bls12_381_fr: true,
   sapling_transaction: true,
-  sapling_transaction_deprecated: true,
   sapling_state: true,
   ticket: true,
   chest_key: true,
@@ -180,12 +172,9 @@ export class MichelsonValidationError extends MichelsonError {
    * @param val Value of a node caused the error
    * @param message An error message
    */
-  constructor(
-    public readonly val: Expr,
-    public readonly message: string
-  ) {
+  constructor(public val: Expr, message?: string) {
     super(val, message);
-    this.name = 'MichelsonValidationError';
+    Object.setPrototypeOf(this, MichelsonValidationError.prototype);
   }
 }
 
@@ -236,14 +225,6 @@ function assertStringLiteral(ex: Expr): ex is StringLiteral {
     return true;
   }
   throw new MichelsonValidationError(ex, 'string literal expected');
-}
-
-// usually an address
-function assertStringOrBytes(ex: Expr): ex is StringLiteral | BytesLiteral {
-  if ('string' in ex || 'bytes' in ex) {
-    return true;
-  }
-  throw new MichelsonValidationError(ex, 'string or bytes literal expected');
 }
 
 function assertArgs<N extends number>(
@@ -415,7 +396,6 @@ export function assertMichelsonInstruction(ex: Expr): ex is MichelsonCode {
         }
         break;
 
-      case 'LAMBDA_REC':
       case 'LAMBDA':
         /* istanbul ignore else */
         if (assertArgs(ex, 3)) {
@@ -738,21 +718,6 @@ export function assertMichelsonData(ex: Expr): ex is MichelsonData {
         /* istanbul ignore else */
         if (assertArgs(ex, 1)) {
           assertMichelsonData(ex.args[0]);
-        }
-        break;
-
-      case 'Lambda_rec':
-        if (ex.args) {
-          assertMichelsonInstruction(ex.args);
-        }
-        break;
-
-      case 'Ticket':
-        if (assertArgs(ex, 4)) {
-          assertStringOrBytes(ex.args[0]);
-          assertMichelsonType(ex.args[1]);
-          assertMichelsonData(ex.args[2]);
-          assertIntLiteral(ex.args[3]);
         }
         break;
 

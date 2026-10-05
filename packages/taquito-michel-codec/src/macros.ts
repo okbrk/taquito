@@ -1,16 +1,15 @@
-import { TaquitoError } from '@taquito/core';
 import { Prim, Expr, IntLiteral } from './micheline';
 import { DefaultProtocol, Protocol, ProtocolOptions, ProtoInferiorTo } from './michelson-types';
 import { Tuple, NoArgs, ReqArgs, NoAnnots } from './utils';
 
 /**
  *  @category Error
- *  Error that indicates macros failed to be expanded
+ *  @description Indicates that an error has occurred preventing macros from being expanded in a plain Michelson input
  */
-export class MacroError extends TaquitoError {
-  constructor(public readonly prim: Prim, public readonly message: string) {
-    super();
-    this.name = 'MacroError';
+export class MacroError extends Error {
+  constructor(public prim: Prim, message?: string) {
+    super(message);
+    Object.setPrototypeOf(this, MacroError.prototype);
   }
 }
 

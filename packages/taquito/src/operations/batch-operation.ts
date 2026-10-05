@@ -1,20 +1,14 @@
-import {
-  BatchOperationResult,
-  OperationContents,
-  OperationContentsAndResult,
-  OperationContentsAndResultOrigination,
-} from '@taquito/rpc';
-import BigNumberJs from 'bignumber.js';
-type BigNumber = InstanceType<typeof BigNumberJs>;
-const BigNumber = BigNumberJs;
-import { BATCH_KINDS } from '../batch/constants';
+import { OperationContentsAndResult, OperationContentsAndResultOrigination } from '@taquito/rpc';
+import BigNumber from 'bignumber.js';
+import { BATCH_KINDS } from '../batch/rpc-batch-provider';
 import { Context } from '../context';
-import { flattenErrors, flattenOperationResult } from './errors';
+import { flattenErrors, flattenOperationResult } from './operation-errors';
 import { Operation } from './operations';
 import {
   FeeConsumingOperation,
   ForgedBytes,
   GasConsumingOperation,
+  RPCOperation,
   StorageConsumingOperation,
   hasMetadataWithResult,
 } from './types';
@@ -25,7 +19,7 @@ export class BatchOperation
 {
   constructor(
     hash: string,
-    private readonly params: OperationContents[],
+    private readonly params: RPCOperation[],
     public readonly source: string,
     raw: ForgedBytes,
     results: OperationContentsAndResult[],
@@ -61,8 +55,7 @@ export class BatchOperation
         .filter((result) => BATCH_KINDS.indexOf(result.kind) !== -1)
         .map((result) => {
           if (hasMetadataWithResult(result)) {
-            const opResult = result.metadata.operation_result as BatchOperationResult;
-            return opResult.status;
+            return result.metadata.operation_result.status;
           } else {
             return 'unknown';
           }

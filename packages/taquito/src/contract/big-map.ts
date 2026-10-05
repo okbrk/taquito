@@ -1,35 +1,27 @@
 import { Schema, BigMapKeyType } from '@taquito/michelson-encoder';
-import BigNumberJs from 'bignumber.js';
-type BigNumber = InstanceType<typeof BigNumberJs>;
-const BigNumber = BigNumberJs;
-import { StorageProvider } from './interface';
+import BigNumber from 'bignumber.js';
+import { ContractProvider } from './interface';
 import { HttpResponseError, STATUS_CODE } from '@taquito/http-utils';
-import { BlockIdentifier } from '../read-provider/interface';
 
 export class BigMapAbstraction {
-  constructor(
-    private id: BigNumber,
-    private schema: Schema,
-    private provider: StorageProvider,
-    private defaultBlock?: BlockIdentifier
-  ) {}
+  constructor(private id: BigNumber, private schema: Schema, private provider: ContractProvider) {}
 
   /**
    *
-   * Fetch one value in a big map
+   * @description Fetch one value in a big map
    *
-   * @param keyToEncode Key to query (will be encoded properly according to the schema)
+   * @param keysToEncode Key to query (will be encoded properly according to the schema)
    * @param block optional block level to fetch the values from (head will be use by default)
    * @returns Return a well formatted json object of a big map value or undefined if the key is not found in the big map
    *
    */
-  async get<T>(keyToEncode: BigMapKeyType, block?: BlockIdentifier) {
+  async get<T>(keyToEncode: BigMapKeyType, block?: number) {
     try {
       const id = await this.provider.getBigMapKeyByID<T>(
         this.id.toString(),
         keyToEncode,
         this.schema,
-        block ?? this.defaultBlock
+        block
       );
       return id;
     } catch (e) {
@@ -43,7 +35,7 @@ export class BigMapAbstraction {
 
   /**
    *
-   * Fetch multiple values in a big map
+   * @description Fetch multiple values in a big map
    * All values will be fetched on the same block level. If a block is specified in the request, the values will be fetched at it.
    * Otherwise, a first request will be done to the node to fetch the level of the head and all values will be fetched at this level.
    * If one of the keys does not exist in the big map, its value will be set to undefined.
@@ -54,16 +46,12 @@ export class BigMapAbstraction {
    * @returns A MichelsonMap containing the keys queried in the big map and their value in a well-formatted JSON object format
    *
    */
-  async getMultipleValues<T>(
-    keysToEncode: Array<BigMapKeyType>,
-    block?: BlockIdentifier,
-    batchSize = 5
-  ) {
+  async getMultipleValues<T>(keysToEncode: Array<BigMapKeyType>, block?: number, batchSize = 5) {
     return this.provider.getBigMapKeysByID<T>(
       this.id.toString(),
       keysToEncode,
       this.schema,
-      block ?? this.defaultBlock,
+      block,
       batchSize
     );
   }

@@ -8,10 +8,6 @@ import {
   SemanticEncoding,
 } from './token';
 
-/**
- *  @category Error
- *  Error that indicates a failure happening when parsing encoding/executing a Set
- */
 export class SetValidationError extends TokenValidationError {
   name = 'SetValidationError';
   constructor(public value: any, public token: SetToken, message: string) {
@@ -20,7 +16,7 @@ export class SetValidationError extends TokenValidationError {
 }
 
 export class SetToken extends Token {
-  static prim: 'set' = 'set' as const;
+  static prim: 'set' = 'set';
 
   constructor(
     protected val: { prim: string; args: any[]; annots: any[] },
@@ -34,22 +30,21 @@ export class SetToken extends Token {
     return this.createToken(this.val.args[0], 0) as any;
   }
 
-  /**
-   * @throws {@link SetValidationError}
-   */
-  private validate(value: any) {
-    if (!Array.isArray(value)) {
-      throw new SetValidationError(value, this, `Value ${JSON.stringify(value)} is not an array`);
+  private isValid(value: any): SetValidationError | null {
+    if (Array.isArray(value)) {
+      return null;
     }
+
+    return new SetValidationError(value, this, 'Value must be an array');
   }
 
-  /**
-   * @throws {@link SetValidationError}
-   */
   public Encode(args: any[]): any {
     const val = args.pop();
 
-    this.validate(val);
+    const err = this.isValid(val);
+    if (err) {
+      throw err;
+    }
 
     return val
       .sort((a: any, b: any) => this.KeySchema.compare(a, b))
@@ -64,11 +59,11 @@ export class SetToken extends Token {
     }, []);
   }
 
-  /**
-   * @throws {@link SetValidationError}
-   */
   public EncodeObject(args: any, semantic?: SemanticEncoding): any {
-    this.validate(args);
+    const err = this.isValid(args);
+    if (err) {
+      throw err;
+    }
 
     if (semantic && semantic[SetToken.prim]) {
       return semantic[SetToken.prim](args);
@@ -79,6 +74,14 @@ export class SetToken extends Token {
       .reduce((prev: any, current: any) => {
         return [...prev, this.KeySchema.EncodeObject(current)];
       }, []);
+  }
+
+  /**
+   * @deprecated ExtractSchema has been deprecated in favor of generateSchema
+   *
+   */
+  public ExtractSchema() {
+    return SetToken.prim;
   }
 
   generateSchema(): SetTokenSchema {

@@ -8,23 +8,15 @@ import {
 import BigNumber from 'bignumber.js';
 import { BaseTokenSchema } from '../../schema/types';
 
-/**
- *  @category Error
- *  Error that indicates a failure happening when parsing encoding/executing Int
- */
 export class IntValidationError extends TokenValidationError {
   name = 'IntValidationError';
-  constructor(
-    public value: any,
-    public token: IntToken,
-    message: string
-  ) {
+  constructor(public value: any, public token: IntToken, message: string) {
     super(value, token, message);
   }
 }
 
 export class IntToken extends ComparableToken {
-  static prim: 'int' = 'int' as const;
+  static prim: 'int' = 'int';
 
   constructor(
     protected val: { prim: string; args: any[]; annots: any[] },
@@ -38,6 +30,14 @@ export class IntToken extends ComparableToken {
     return new BigNumber(val[Object.keys(val)[0]]);
   }
 
+  /**
+   * @deprecated ExtractSchema has been deprecated in favor of generateSchema
+   *
+   */
+  public ExtractSchema() {
+    return IntToken.prim;
+  }
+
   generateSchema(): BaseTokenSchema {
     return {
       __michelsonType: IntToken.prim,
@@ -45,37 +45,31 @@ export class IntToken extends ComparableToken {
     };
   }
 
-  /**
-   * @throws {@link IntValidationError}
-   */
-  private validate(val: any) {
-    let bigNumber: BigNumber;
-    try {
-      bigNumber = new BigNumber(val);
-    } catch {
-      throw new IntValidationError(val, this, `Value is not a number: ${JSON.stringify(val)}`);
-    }
+  private isValid(val: any): IntValidationError | null {
+    const bigNumber = new BigNumber(val);
     if (bigNumber.isNaN()) {
-      throw new IntValidationError(val, this, `Value is not a number: ${JSON.stringify(val)}`);
+      return new IntValidationError(val, this, `Value is not a number: ${val}`);
+    } else {
+      return null;
     }
   }
 
-  /**
-   * @throws {@link IntValidationError}
-   */
   public Encode(args: any[]): any {
     const val = args.pop();
 
-    this.validate(val);
+    const err = this.isValid(val);
+    if (err) {
+      throw err;
+    }
 
     return { int: new BigNumber(val).toFixed() };
   }
 
-  /**
-   * @throws {@link IntValidationError}
-   */
   public EncodeObject(val: any, semantic?: SemanticEncoding): any {
-    this.validate(val);
+    const err = this.isValid(val);
+    if (err) {
+      throw err;
+    }
 
     if (semantic && semantic[IntToken.prim]) {
       return semantic[IntToken.prim](val);

@@ -56,11 +56,8 @@ describe('Bls12-381-fr token', () => {
 
       try {
         token.Encode(['test']);
-      } catch (ex: unknown) {
-        expect(ex).toBeInstanceOf(Bls12381frValidationError);
-        if (ex instanceof Bls12381frValidationError) {
-          expect(ex.name).toEqual('Bls12381frValidationError');
-        }
+      } catch (ex) {
+        expect(ex.name).toEqual('Bls12381frValidationError');
       }
     });
   });
@@ -75,6 +72,7 @@ describe('Bls12-381-fr token', () => {
 
   describe('ExtractSchema', () => {
     it('test schema', () => {
+      expect(token.ExtractSchema()).toEqual('bls12_381_fr');
       expect(token.generateSchema()).toEqual({
         __michelsonType: 'bls12_381_fr',
         schema: 'bls12_381_fr'

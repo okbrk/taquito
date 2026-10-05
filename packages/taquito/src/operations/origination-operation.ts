@@ -1,42 +1,36 @@
-import {
-  OperationContentsAndResult,
-  OperationContentsAndResultOrigination,
-  OperationContentsOrigination,
-} from '@taquito/rpc';
-import BigNumberJs from 'bignumber.js';
-type BigNumber = InstanceType<typeof BigNumberJs>;
-const BigNumber = BigNumberJs;
+import { OperationContentsAndResult, OperationContentsAndResultOrigination } from '@taquito/rpc';
+import { BigNumber } from 'bignumber.js';
 import { Context } from '../context';
 import { DefaultContractType } from '../contract/contract';
 import { RpcContractProvider } from '../contract/rpc-contract-provider';
-import { isBlockHashIdentifier } from '../read-provider/interface';
-import { OriginationOperationError } from './errors';
+import { OriginationOperationError } from './operation-errors';
 import { Operation } from './operations';
 import {
   FeeConsumingOperation,
   ForgedBytes,
   GasConsumingOperation,
   hasMetadataWithResult,
+  RPCOriginationOperation,
   StorageConsumingOperation,
 } from './types';
 
 /**
- * Origination operation provide utility function to fetch newly originated contract
+ * @description Origination operation provide utility function to fetch newly originated contract
  *
- * @remarks Currently support only one origination per operation
+ * @warn Currently support only one origination per operation
  */
 export class OriginationOperation<TContract extends DefaultContractType = DefaultContractType>
   extends Operation
   implements GasConsumingOperation, StorageConsumingOperation, FeeConsumingOperation
 {
   /**
-   * Contract address of the newly originated contract
+   * @description Contract address of the newly originated contract
    */
   public readonly contractAddress?: string;
 
   constructor(
     hash: string,
-    private readonly params: OperationContentsOrigination,
+    private readonly params: RPCOriginationOperation,
     raw: ForgedBytes,
     results: OperationContentsAndResult[],
     context: Context,
@@ -69,15 +63,15 @@ export class OriginationOperation<TContract extends DefaultContractType = Defaul
   }
 
   get fee() {
-    return Number(this.params.fee);
+    return this.params.fee;
   }
 
   get gasLimit() {
-    return Number(this.params.gas_limit);
+    return this.params.gas_limit;
   }
 
   get storageLimit() {
-    return Number(this.params.storage_limit);
+    return this.params.storage_limit;
   }
 
   get consumedGas() {
@@ -106,8 +100,7 @@ export class OriginationOperation<TContract extends DefaultContractType = Defaul
   }
 
   /**
-   * Provide the contract abstract of the newly originated contract
-   * @throws OriginationOperationError
+   * @description Provide the contract abstract of the newly originated contract
    */
   async contract(confirmations?: number, timeout?: number) {
     if (!this.contractAddress) {
@@ -115,19 +108,6 @@ export class OriginationOperation<TContract extends DefaultContractType = Defaul
     }
 
     await this.confirmation(confirmations, timeout);
-    if (!Number.isFinite(this.includedInBlock)) {
-      throw new OriginationOperationError('Confirmation completed but includedInBlock was not set');
-    }
-
-    const inclusionBlock = await this.getInclusionBlock();
-    if (!isBlockHashIdentifier(inclusionBlock.hash)) {
-      throw new OriginationOperationError('Confirmation completed but includedInBlock was not set');
-    }
-
-    return this.contractProvider.at<TContract>(
-      this.contractAddress,
-      undefined,
-      inclusionBlock.hash
-    );
+    return this.contractProvider.at<TContract>(this.contractAddress);
   }
 }

@@ -1,17 +1,11 @@
-import { TaquitoError } from '@taquito/core';
-
 /**
  *  @category Error
- *  Error that indicates a failure when performing the scan step when parsing Michelson
+ *  @description Error that indicates a failure when performing the scan step when parsing Michelson
  */
-export class ScanError extends TaquitoError {
-  constructor(
-    public readonly src: string,
-    public readonly idx: number,
-    public readonly message: string
-  ) {
-    super();
-    this.name = 'ScanError';
+export class ScanError extends Error {
+  constructor(public src: string, public idx: number, message?: string) {
+    super(message);
+    Object.setPrototypeOf(this, ScanError.prototype);
   }
 }
 
@@ -58,7 +52,7 @@ export function* scan(src: string, scanComments = false): Generator<Token, void>
         i++;
       }
       yield { t: Literal.Ident, v: src.slice(start, i), first: start, last: i };
-    } else if (src.length - i > 1 && src.substring(i, i + 2) === '0x') {
+    } else if (src.length - i > 1 && src.substr(i, 2) === '0x') {
       // Bytes
       i += 2;
       while (i < src.length && isHex.test(src[i])) {
@@ -106,10 +100,10 @@ export function* scan(src: string, scanComments = false): Generator<Token, void>
       if (scanComments) {
         yield { t: Literal.Comment, v: src.slice(start, i), first: start, last: i };
       }
-    } else if (src.length - i > 1 && src.substring(i, i + 2) === '/*') {
+    } else if (src.length - i > 1 && src.substr(i, 2) === '/*') {
       // C style comment
       i += 2;
-      while (i < src.length && !(src.length - i > 1 && src.substring(i, i + 2) === '*/')) {
+      while (i < src.length && !(src.length - i > 1 && src.substr(i, 2) === '*/')) {
         i++;
       }
       if (i === src.length) {

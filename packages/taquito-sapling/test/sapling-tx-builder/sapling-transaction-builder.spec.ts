@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { vi, type Mock } from 'vitest';
 import {
   outputsUnshieldedTx,
   outputsShieldedTx,
@@ -14,19 +13,19 @@ describe('Sapling transactions builder', () => {
   let saplingTransactionBuilder: SaplingTransactionBuilder;
 
   let mockInMemorySpendingKey: {
-    prepareSpendDescription: Mock;
-    getSaplingViewingKeyProvider: Mock;
-    getSpendingKey: Mock;
-    signSpendDescription: Mock;
+    prepareSpendDescription: jest.Mock<any, any>;
+    getSaplingViewingKeyProvider: jest.Mock<any, any>;
+    getSpendingKey: jest.Mock<any, any>;
+    signSpendDescription: jest.Mock<any, any>;
   };
 
   let mockInMemoryViewingKey: {
-    getFullViewingKey: Mock;
-    getOutgoingViewingKey: Mock;
+    getFullViewingKey: jest.Mock<any, any>;
+    getOutgoingViewingKey: jest.Mock<any, any>;
   };
 
   let mockInMemoryProvingKey: {
-    prepareSpendDescription: Mock;
+    prepareSpendDescription: jest.Mock<any, any>;
   };
 
   const saplingForger = new SaplingForger();
@@ -37,60 +36,60 @@ describe('Sapling transactions builder', () => {
   };
 
   let mockSaplingWrapper: {
-    withProvingContext: Mock;
-    getRandomBytes: Mock;
-    randR: Mock;
-    getOutgoingViewingKey: Mock;
-    preparePartialOutputDescription: Mock;
-    getDiversifiedFromRawPaymentAddress: Mock;
-    deriveEphemeralPublicKey: Mock;
-    getPkdFromRawPaymentAddress: Mock;
-    keyAgreement: Mock;
-    getPaymentAddressFromViewingKey: Mock;
-    createBindingSignature: Mock;
-    initSaplingParameters: Mock;
+    withProvingContext: jest.Mock<any, any>;
+    getRandomBytes: jest.Mock<any, any>;
+    randR: jest.Mock<any, any>;
+    getOutgoingViewingKey: jest.Mock<any, any>;
+    preparePartialOutputDescription: jest.Mock<any, any>;
+    getDiversifiedFromRawPaymentAddress: jest.Mock<any, any>;
+    deriveEphemeralPublicKey: jest.Mock<any, any>;
+    getPkdFromRawPaymentAddress: jest.Mock<any, any>;
+    keyAgreement: jest.Mock<any, any>;
+    getPaymentAddressFromViewingKey: jest.Mock<any, any>;
+    createBindingSignature: jest.Mock<any, any>;
+    initSaplingParameters: jest.Mock<any, any>;
   };
 
   let mockReadProvider: {
-    getSaplingDiffById: Mock;
-    getChainId: Mock;
+    getSaplingDiffById: jest.Mock<any, any>;
+    getChainId: jest.Mock<any, any>;
   };
 
   beforeEach(() => {
     mockInMemorySpendingKey = {
-      prepareSpendDescription: vi.fn(),
-      getSaplingViewingKeyProvider: vi.fn(),
-      getSpendingKey: vi.fn(),
-      signSpendDescription: vi.fn(),
+      prepareSpendDescription: jest.fn(),
+      getSaplingViewingKeyProvider: jest.fn(),
+      getSpendingKey: jest.fn(),
+      signSpendDescription: jest.fn(),
     };
 
     mockInMemoryViewingKey = {
-      getFullViewingKey: vi.fn(),
-      getOutgoingViewingKey: vi.fn(),
+      getFullViewingKey: jest.fn(),
+      getOutgoingViewingKey: jest.fn(),
     };
 
     mockInMemoryProvingKey = {
-      prepareSpendDescription: vi.fn(),
+      prepareSpendDescription: jest.fn(),
     };
 
     mockSaplingWrapper = {
-      withProvingContext: vi.fn(),
-      getRandomBytes: vi.fn(),
-      randR: vi.fn(),
-      getOutgoingViewingKey: vi.fn(),
-      preparePartialOutputDescription: vi.fn(),
-      getDiversifiedFromRawPaymentAddress: vi.fn(),
-      deriveEphemeralPublicKey: vi.fn(),
-      getPkdFromRawPaymentAddress: vi.fn(),
-      keyAgreement: vi.fn(),
-      getPaymentAddressFromViewingKey: vi.fn(),
-      createBindingSignature: vi.fn(),
-      initSaplingParameters: vi.fn(),
+      withProvingContext: jest.fn(),
+      getRandomBytes: jest.fn(),
+      randR: jest.fn(),
+      getOutgoingViewingKey: jest.fn(),
+      preparePartialOutputDescription: jest.fn(),
+      getDiversifiedFromRawPaymentAddress: jest.fn(),
+      deriveEphemeralPublicKey: jest.fn(),
+      getPkdFromRawPaymentAddress: jest.fn(),
+      keyAgreement: jest.fn(),
+      getPaymentAddressFromViewingKey: jest.fn(),
+      createBindingSignature: jest.fn(),
+      initSaplingParameters: jest.fn(),
     };
 
     mockReadProvider = {
-      getSaplingDiffById: vi.fn(),
-      getChainId: vi.fn(),
+      getSaplingDiffById: jest.fn(),
+      getChainId: jest.fn(),
     };
 
     mockInMemorySpendingKey.getSaplingViewingKeyProvider.mockResolvedValue(mockInMemoryViewingKey);
@@ -111,7 +110,7 @@ describe('Sapling transactions builder', () => {
     );
   });
 
-  it('should be instantiable', async () => {
+  it('should be instantiable', async (done) => {
     expect(
       new SaplingTransactionBuilder(
         { saplingSigner: mockInMemorySpendingKey as any },
@@ -121,9 +120,10 @@ describe('Sapling transactions builder', () => {
         mockSaplingWrapper as any
       )
     ).toBeDefined();
+    done();
   });
 
-  it('should prepare a shielded transaction of 8 tez', async () => {
+  it('should prepare a shielded transaction of 8 tez', async (done) => {
     mockSaplingWrapper.randR.mockResolvedValue(
       Buffer.from('66222a13e6050a18325b63e0beaed5a864c33a34cdcf7c53a74fb53e4be3a202', 'hex')
     );
@@ -156,9 +156,10 @@ describe('Sapling transactions builder', () => {
       signature,
       balance: new BigNumber(-8000000),
     });
+    done();
   });
 
-  it('should prepare an unshielded transaction of 1 tez', async () => {
+  it('should prepare an unshielded transaction of 1 tez', async (done) => {
     mockSaplingWrapper.randR.mockResolvedValue(
       Buffer.from('8b038b981085a1af8cb209216873a4f43dd0059ca9dd29390e8af1e2fdffc604', 'hex')
     );
@@ -207,14 +208,16 @@ describe('Sapling transactions builder', () => {
         'hex'
       ),
     });
+    done();
   });
 
-  it('calculateTransactionBalance', async () => {
+  it('calculateTransactionBalance', async (done) => {
     const balance = saplingTransactionBuilder.calculateTransactionBalance('0', '2');
     expect(balance).toEqual(new BigNumber(-2));
+    done();
   });
 
-  it('prepareSaplingOutputDescription', async () => {
+  it('prepareSaplingOutputDescription', async (done) => {
     mockSaplingWrapper.randR.mockResolvedValue(
       Buffer.from('f4a2b699ba09ffc666d2f1cc41e630ed5877ca4788ce081df97729bb10f3ee07', 'hex')
     );
@@ -299,9 +302,10 @@ describe('Sapling transactions builder', () => {
         ),
       },
     });
+    done();
   });
 
-  it('prepareSaplingSpendDescription with spending key', async () => {
+  it('prepareSaplingSpendDescription with spending key', async (done) => {
     mockSaplingWrapper.randR.mockResolvedValue(
       Buffer.from('b924bc77666de1189d3f904ab5a6332c371d9f3bd9aa188579e9da60ce270f0a', 'hex')
     );
@@ -401,9 +405,10 @@ describe('Sapling transactions builder', () => {
         ),
       },
     ]);
+    done();
   });
 
-  it('prepareSaplingSpendDescription with prooving key', async () => {
+  it('prepareSaplingSpendDescription with prooving key', async (done) => {
     const saplingTransactionBuilder2 = new SaplingTransactionBuilder(
       {
         saplingSigner: mockInMemorySpendingKey as any,
@@ -514,9 +519,10 @@ describe('Sapling transactions builder', () => {
         ),
       },
     ]);
+    done();
   });
 
-  it('createPaybackOutput', async () => {
+  it('createPaybackOutput', async (done) => {
     mockSaplingWrapper.randR.mockResolvedValue(
       Buffer.from('ae2a0d1d3aa056c3171643544016d33de2e080c0681a7a30687bea6dfc53d00a', 'hex')
     );
@@ -608,9 +614,10 @@ describe('Sapling transactions builder', () => {
       },
       payBackAmount: '5000000',
     });
+    done();
   });
 
-  it('createBindingSignature', async () => {
+  it('createBindingSignature', async (done) => {
     const signature = Buffer.from(
       '4891e3ec8afcc06675c39a67e95080e0b0ef67c51fde929da938020611480528a33595d0f21b3a087fb3d1e71d4de944ff6e5ba35e9a32a8a034be12d53a1507',
       'hex'
@@ -679,9 +686,10 @@ describe('Sapling transactions builder', () => {
     });
 
     expect(bindingSignature).toEqual(signature);
+    done();
   });
 
-  it('getAntiReplay', async () => {
+  it('getAntiReplay', async (done) => {
     const antiReplay = await saplingTransactionBuilder.getAntiReplay();
     expect(antiReplay).toEqual(
       Buffer.from(
@@ -689,5 +697,6 @@ describe('Sapling transactions builder', () => {
         'hex'
       )
     );
+    done();
   });
 });

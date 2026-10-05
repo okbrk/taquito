@@ -57,11 +57,8 @@ describe('Bytes token', () => {
 
       try {
         token.Encode(['test']);
-      } catch (ex: unknown) {
-        expect(ex).toBeInstanceOf(BytesValidationError);
-        if (ex instanceof BytesValidationError) {
-          expect(ex.name).toEqual('BytesValidationError');
-        }
+      } catch (ex) {
+        expect(ex.name).toEqual('BytesValidationError');
       }
     });
   });

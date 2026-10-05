@@ -2,7 +2,7 @@ import { OptionTokenSchema } from '../schema/types';
 import { Token, TokenFactory, Semantic, ComparableToken, SemanticEncoding } from './token';
 
 export class OptionToken extends ComparableToken {
-  static prim: 'option' = 'option' as const;
+  static prim: 'option' = 'option';
 
   constructor(
     protected val: { prim: string; args: any[]; annots: any[] },
@@ -42,15 +42,12 @@ export class OptionToken extends ComparableToken {
   }
 
   public EncodeObject(args: any, semantic?: SemanticEncoding): any {
-    let value = args;
+    const value = args;
 
     if (value === undefined || value === null) {
       return { prim: 'None' };
     }
-    value = typeof value === 'object' && 'Some' in value ? value['Some'] : value;
-    if (Array.isArray(value) && value.length === 1) {
-      value = value[0];
-    }
+
     return { prim: 'Some', args: [this.schema().EncodeObject(value, semantic)] };
   }
 
@@ -59,7 +56,15 @@ export class OptionToken extends ComparableToken {
       return null;
     }
 
-    return { Some: this.schema().Execute(val.args[0], semantics) };
+    return this.schema().Execute(val.args[0], semantics);
+  }
+
+  /**
+   * @deprecated ExtractSchema has been deprecated in favor of generateSchema
+   *
+   */
+  public ExtractSchema() {
+    return this.schema().ExtractSchema();
   }
 
   generateSchema(): OptionTokenSchema {
@@ -70,7 +75,7 @@ export class OptionToken extends ComparableToken {
   }
 
   public ExtractSignature() {
-    return [...this.schema().ExtractSignature()];
+    return [...this.schema().ExtractSignature(), []];
   }
 
   get KeySchema(): ComparableToken {

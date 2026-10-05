@@ -4,19 +4,16 @@
  *
  */
 
-import { Buffer } from 'buffer';
 import { SaplingDiffResponse, SaplingTransactionCiphertext } from '@taquito/rpc';
-import { InvalidMerkleTreeError, TreeConstructionFailure } from '../errors';
-import { merkleHash } from '../sapling-wasm';
+import { InvalidMerkleRootError, TreeConstructionFailure } from '../error';
+import { merkleHash } from '@airgap/sapling-wasm';
 import { Lazy, pairNodes, changeEndianness } from './utils';
 import { hex2Bytes, num2PaddedHex } from '@taquito/utils';
-import BigNumberJs from 'bignumber.js';
-type BigNumber = InstanceType<typeof BigNumberJs>;
-const BigNumber = BigNumberJs;
+import BigNumber from 'bignumber.js';
 import { MerkleTree, SaplingStateTree } from '../types';
 
 /**
- * The SaplingState class's main purpose is to provide a Merkle path for the forger and the transaction builder, so that it may verify that the Sapling transaction is valid
+ * @description The SaplingState class's main purpose is to provide a Merkle path for the forger and the transaction builder, so that it may verify that the Sapling transaction is valid
  *
  */
 export class SaplingState {
@@ -148,13 +145,12 @@ export class SaplingState {
    *
    * @param tree Merkle tree to validate
    * @param expectedRoot the expected merkle root to validate against
-   * @throws {@link InvalidMerkleTreeError}
    */
   private async validateMerkleTree(tree: MerkleTree, expectedRoot: string) {
     const root: Buffer = await this.getMerkleHash(tree, this.height - 1);
 
     if (root.toString('hex') !== expectedRoot) {
-      throw new InvalidMerkleTreeError(root.toString('hex'));
+      throw new InvalidMerkleRootError(root.toString('hex'));
     }
   }
 

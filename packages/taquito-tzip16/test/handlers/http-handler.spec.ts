@@ -1,9 +1,8 @@
-import { vi, type Mock } from 'vitest';
 import { HttpHandler } from '../../src/handlers/http-handler';
 
 describe('Tzip16 http handler test', () => {
   let mockHttpBackend: {
-    createRequest: Mock;
+    createRequest: jest.Mock<any, any>;
   };
   const mockContractAbstraction: any = {};
   const mockContext: any = {};
@@ -12,13 +11,13 @@ describe('Tzip16 http handler test', () => {
 
   beforeEach(() => {
     mockHttpBackend = {
-      createRequest: vi.fn(),
+      createRequest: jest.fn(),
     };
 
     httpHandler['httpBackend'] = mockHttpBackend as any;
   });
 
-  it('Should return a string representing the metadata fetched by the httpBackend', async () => {
+  it('Should return a string representing the metadata fetched by the httpBackend', async (done) => {
     mockHttpBackend.createRequest.mockResolvedValue(`{ "name": "Taquito test" }`);
     const tzip16Uri = {
       sha256hash: undefined,
@@ -28,5 +27,6 @@ describe('Tzip16 http handler test', () => {
     const metadata = await httpHandler.getMetadata(mockContractAbstraction, tzip16Uri, mockContext);
 
     expect(metadata).toEqual(`{ "name": "Taquito test" }`);
+    done();
   });
 });

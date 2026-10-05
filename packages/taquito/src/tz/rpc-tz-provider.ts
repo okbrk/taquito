@@ -1,58 +1,48 @@
-import BigNumberJs from 'bignumber.js';
-type BigNumber = InstanceType<typeof BigNumberJs>;
-const BigNumber = BigNumberJs;
+import BigNumber from 'bignumber.js';
 import { Context } from '../context';
+import { OperationEmitter } from '../operations/operation-emitter';
 import { Operation } from '../operations/operations';
+import { RPCActivateOperation } from '../operations/types';
 import { TzProvider } from './interface';
+import { OpKind } from '@taquito/rpc';
 import {
   validateAddress,
   ValidationResult,
   validateKeyHash,
+  InvalidAddressError,
   InvalidKeyHashError,
 } from '@taquito/utils';
-import { InvalidAddressError } from '@taquito/core';
-import { Provider } from '../provider';
-import { PrepareProvider } from '../prepare';
 
-export class RpcTzProvider extends Provider implements TzProvider {
+export class RpcTzProvider extends OperationEmitter implements TzProvider {
   constructor(context: Context) {
     super(context);
   }
 
-  private prepare = new PrepareProvider(this.context);
-
   async getBalance(address: string): Promise<BigNumber> {
-    const addressValidation = validateAddress(address);
-    if (addressValidation !== ValidationResult.VALID) {
-      throw new InvalidAddressError(address, addressValidation);
+    if (validateAddress(address) !== ValidationResult.VALID) {
+      throw new InvalidAddressError(address);
     }
     return this.context.readProvider.getBalance(address, 'head');
   }
 
-  async getSpendable(address: string): Promise<BigNumber> {
-    const addressValidation = validateAddress(address);
-    if (addressValidation !== ValidationResult.VALID) {
-      throw new InvalidAddressError(address, addressValidation);
-    }
-    return this.context.readProvider.getSpendable(address, 'head');
-  }
-
   async getDelegate(address: string): Promise<string | null> {
-    const addressValidation = validateAddress(address);
-    if (addressValidation !== ValidationResult.VALID) {
-      throw new InvalidAddressError(address, addressValidation);
+    if (validateAddress(address) !== ValidationResult.VALID) {
+      throw new InvalidAddressError(address);
     }
     return this.context.readProvider.getDelegate(address, 'head');
   }
 
   async activate(pkh: string, secret: string) {
-    const pkhValidation = validateKeyHash(pkh);
-    if (pkhValidation !== ValidationResult.VALID) {
-      throw new InvalidKeyHashError(pkh, pkhValidation);
+    if (validateKeyHash(pkh) !== ValidationResult.VALID) {
+      throw new InvalidKeyHashError(pkh);
     }
+    const operation: RPCActivateOperation = {
+      kind: OpKind.ACTIVATION,
+      pkh,
+      secret,
+    };
 
-    const prepared = await this.prepare.activate({ pkh, secret });
-
+    const prepared = await this.prepareOperation({ operation: [operation], source: pkh });
     const forgedBytes = await this.forge(prepared);
     const bytes = `${forgedBytes.opbytes}00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000`;
     return new Operation(

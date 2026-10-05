@@ -1,9 +1,7 @@
 import { OperationContentsAndResult } from '@taquito/rpc';
-import BigNumberJs from 'bignumber.js';
-type BigNumber = InstanceType<typeof BigNumberJs>;
-const BigNumber = BigNumberJs;
+import BigNumber from 'bignumber.js';
 import { COST_PER_BYTE } from '../constants';
-import { flattenOperationResult } from '../operations/errors';
+import { flattenOperationResult } from '../operations/operation-errors';
 
 export interface Receipt {
   totalFee: BigNumber;

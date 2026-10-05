@@ -135,10 +135,7 @@ describe('Schema test', () => {
 
   it('Should extract signature properly', () => {
     const schema = new ParameterSchema(params3);
-    expect(schema.ExtractSignatures()).toContainEqual([
-      'deposit',
-      { __michelsonType: 'unit', schema: 'unit' },
-    ]);
+    expect(schema.ExtractSignatures()).toContainEqual(['deposit', 'unit']);
   });
 
   it('Should encode parameter schema properly', () => {

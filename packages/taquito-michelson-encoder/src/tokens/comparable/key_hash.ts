@@ -5,13 +5,9 @@ import {
   TokenValidationError,
   SemanticEncoding,
 } from '../token';
-import { b58DecodePublicKeyHash, compareArrays, encodeKeyHash, validateKeyHash, ValidationResult } from '@taquito/utils';
+import { encodeKeyHash, validateKeyHash, ValidationResult } from '@taquito/utils';
 import { BaseTokenSchema } from '../../schema/types';
 
-/**
- *  @category Error
- *  Error that indicates a failure happening when parsing encoding/executing Key Hash
- */
 export class KeyHashValidationError extends TokenValidationError {
   name = 'KeyHashValidationError';
   constructor(public value: any, public token: KeyHashToken, message: string) {
@@ -20,7 +16,7 @@ export class KeyHashValidationError extends TokenValidationError {
 }
 
 export class KeyHashToken extends ComparableToken {
-  static prim: 'key_hash' = 'key_hash' as const;
+  static prim: 'key_hash' = 'key_hash';
 
   constructor(
     protected val: { prim: string; args: any[]; annots: any[] },
@@ -38,41 +34,44 @@ export class KeyHashToken extends ComparableToken {
     return encodeKeyHash(val.bytes);
   }
 
-  /**
-   * @throws {@link KeyHashValidationError}
-   */
-  private validate(value: any) {
+  private isValid(value: any): KeyHashValidationError | null {
     if (validateKeyHash(value) !== ValidationResult.VALID) {
-      throw new KeyHashValidationError(
-        value,
-        this,
-        `KeyHash is not valid: ${JSON.stringify(value)}`
-      );
+      return new KeyHashValidationError(value, this, `KeyHash is not valid: ${value}`);
     }
+
+    return null;
   }
 
-  /**
-   * @throws {@link KeyHashValidationError}
-   */
   public Encode(args: any[]): any {
     const val = args.pop();
 
-    this.validate(val);
+    const err = this.isValid(val);
+    if (err) {
+      throw err;
+    }
 
     return { string: val };
   }
 
-  /**
-   * @throws {@link KeyHashValidationError}
-   */
   public EncodeObject(val: any, semantic?: SemanticEncoding): any {
-    this.validate(val);
+    const err = this.isValid(val);
+    if (err) {
+      throw err;
+    }
 
     if (semantic && semantic[KeyHashToken.prim]) {
       return semantic[KeyHashToken.prim](val);
     }
 
     return { string: val };
+  }
+
+  /**
+   * @deprecated ExtractSchema has been deprecated in favor of generateSchema
+   *
+   */
+  public ExtractSchema() {
+    return KeyHashToken.prim;
   }
 
   generateSchema(): BaseTokenSchema {
@@ -95,13 +94,6 @@ export class KeyHashToken extends ComparableToken {
       key: { string: val },
       type: { prim: KeyHashToken.prim },
     };
-  }
-
-  compare(pkh1: string, pkh2: string): number {
-    // binary type tag actually reflects the expected prefix order
-    const h1 = b58DecodePublicKeyHash(pkh1, 'array');
-    const h2 = b58DecodePublicKeyHash(pkh2, 'array');
-    return compareArrays(h1, h2);
   }
 
   findAndReturnTokens(tokenToFind: string, tokens: Token[]) {

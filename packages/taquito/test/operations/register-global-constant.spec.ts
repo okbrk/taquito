@@ -1,6 +1,7 @@
-import { ForgedBytes, RegisterGlobalConstantOperation } from '@taquito/taquito';
+import { ForgedBytes } from '../../src/operations/types';
 import { OperationContentsAndResult } from '@taquito/rpc';
 import { defaultConfigConfirmation } from '../../src/context';
+import { RegisterGlobalConstantOperation } from '../../src/operations/register-global-constant-operation';
 import { RegisterGlobalConstantOperationBuilder, RevealOperationBuilder } from '../helpers';
 
 describe('RegisterGlobalConstant operation', () => {
@@ -64,7 +65,7 @@ describe('RegisterGlobalConstant operation', () => {
   beforeEach(() => {
     fakeContext = {
       rpc: {
-        getBlock: vi.fn(),
+        getBlock: jest.fn(),
       },
       config: { ...defaultConfigConfirmation },
     };

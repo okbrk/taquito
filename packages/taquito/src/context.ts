@@ -3,7 +3,7 @@ import { Protocols } from './constants';
 import { Forger } from '@taquito/local-forging';
 import { Injector } from './injector/interface';
 import { RpcInjector } from './injector/rpc-injector';
-import { Signer } from '@taquito/core';
+import { Signer } from './signer/interface';
 import { NoopSigner } from './signer/noop';
 import { OperationFactory } from './wallet/operation-factory';
 import { RpcTzProvider } from './tz/rpc-tz-provider';
@@ -24,7 +24,6 @@ import { RpcReadAdapter } from './read-provider/rpc-read-adapter';
 import { SubscribeProvider } from './subscribe/interface';
 import { PollingSubscribeProvider } from './subscribe/polling-subcribe-provider';
 import { TaquitoLocalForger } from './forger/taquito-local-forger';
-import { PrepareProvider } from './prepare/prepare-provider';
 
 export interface TaquitoProvider<T, K extends Array<any>> {
   new (context: Context, ...rest: K): T;
@@ -41,7 +40,7 @@ export const defaultConfigConfirmation: ConfigConfirmation = {
 };
 
 /**
- * Encapsulate common service used throughout different part of the library
+ * @description Encapsulate common service used throughout different part of the library
  */
 export class Context {
   private _rpcClient: RpcClientInterface;
@@ -58,7 +57,6 @@ export class Context {
   public readonly tz = new RpcTzProvider(this);
   public readonly estimate = new RPCEstimateProvider(this);
   public readonly contract = new RpcContractProvider(this, this.estimate);
-  public readonly prepare = new PrepareProvider(this);
   public readonly batch = new RPCBatchProvider(this, this.estimate);
   public readonly wallet = new Wallet(this);
 
@@ -215,7 +213,7 @@ export class Context {
   }
 
   /**
-   * Create a copy of the current context. Useful when you have long running operation and you do not want a context change to affect the operation
+   * @description Create a copy of the current context. Useful when you have long running operation and you do not want a context change to affect the operation
    */
   clone(): Context {
     return new Context(
@@ -235,14 +233,14 @@ export class Context {
   }
 
   /**
-   * Allows extensions set on the TezosToolkit to inject logic into the context
+   * @description Allows extensions set on the TezosToolkit to inject logic into the context
    */
   registerProviderDecorator(fx: (context: Context) => Context) {
     this.providerDecorator.push(fx);
   }
 
   /**
-   * Applies the decorators on a cloned instance of the context and returned this cloned instance.
+   * @description Applies the decorators on a cloned instance of the context and returned this cloned instance.
    * The decorators are functions that inject logic into the context.
    * They are provided by the extensions set on the TezosToolkit by calling the registerProviderDecorator method.
    */

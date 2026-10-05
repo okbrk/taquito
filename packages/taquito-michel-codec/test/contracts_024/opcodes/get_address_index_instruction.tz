@@ -1,4 +1,0 @@
-{ parameter address ;
-  storage (option nat) ;
-  code { CAR ; GET_ADDRESS_INDEX ; NIL operation ; PAIR }
-}

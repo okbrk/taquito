@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { ForgedBytes, BatchOperation } from '@taquito/taquito';
+import { ForgedBytes } from '../../src/operations/types';
+import { BatchOperation } from '../../src/operations/batch-operation';
 import { defaultConfigConfirmation } from '../../src/context';
 import {
   RevealOperationBuilder,
@@ -22,7 +23,7 @@ describe('Batch operation', () => {
   beforeEach(() => {
     fakeContext = {
       rpc: {
-        getBlock: vi.fn(),
+        getBlock: jest.fn(),
       },
       config: { ...defaultConfigConfirmation },
     };

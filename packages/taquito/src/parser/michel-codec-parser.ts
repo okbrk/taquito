@@ -71,7 +71,7 @@ export class MichelCodecParser implements ParserProvider {
     if (typeof code === 'string') {
       const c = await this.parseScript(code);
       if (c === null) {
-        throw new InvalidCodeParameter('Unable to parse', code);
+        throw new InvalidCodeParameter('Invalid code parameter', code);
       }
       parsedCode = c;
     } else {

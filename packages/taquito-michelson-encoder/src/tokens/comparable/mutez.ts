@@ -8,23 +8,15 @@ import {
 import BigNumber from 'bignumber.js';
 import { BaseTokenSchema } from '../../schema/types';
 
-/**
- *  @category Error
- *  Error that indicates a failure happening when parsing encoding/executing Mutez
- */
 export class MutezValidationError extends TokenValidationError {
   name = 'MutezValidationError';
-  constructor(
-    public value: any,
-    public token: MutezToken,
-    message: string
-  ) {
+  constructor(public value: any, public token: MutezToken, message: string) {
     super(value, token, message);
   }
 }
 
 export class MutezToken extends ComparableToken {
-  static prim: 'mutez' = 'mutez' as const;
+  static prim: 'mutez' = 'mutez';
 
   constructor(
     protected val: { prim: string; args: any[]; annots: any[] },
@@ -38,6 +30,14 @@ export class MutezToken extends ComparableToken {
     return new BigNumber(val[Object.keys(val)[0]]);
   }
 
+  /**
+   * @deprecated ExtractSchema has been deprecated in favor of generateSchema
+   *
+   */
+  public ExtractSchema() {
+    return MutezToken.prim;
+  }
+
   generateSchema(): BaseTokenSchema {
     return {
       __michelsonType: MutezToken.prim,
@@ -45,37 +45,31 @@ export class MutezToken extends ComparableToken {
     };
   }
 
-  /**
-   * @throws {@link MutezValidationError}
-   */
-  private validate(val: any) {
-    let bigNumber: BigNumber;
-    try {
-      bigNumber = new BigNumber(val);
-    } catch {
-      throw new MutezValidationError(val, this, `Value is not a number: ${val}`);
-    }
+  private isValid(val: any): MutezValidationError | null {
+    const bigNumber = new BigNumber(val);
     if (bigNumber.isNaN()) {
-      throw new MutezValidationError(val, this, `Value is not a number: ${val}`);
+      return new MutezValidationError(val, this, `Value is not a number: ${val}`);
+    } else {
+      return null;
     }
   }
 
-  /**
-   * @throws {@link MutezValidationError}
-   */
   public Encode(args: any[]): any {
     const val = args.pop();
 
-    this.validate(val);
+    const err = this.isValid(val);
+    if (err) {
+      throw err;
+    }
 
     return { int: String(val).toString() };
   }
 
-  /**
-   * @throws {@link MutezValidationError}
-   */
   public EncodeObject(val: any, semantic?: SemanticEncoding): any {
-    this.validate(val);
+    const err = this.isValid(val);
+    if (err) {
+      throw err;
+    }
 
     if (semantic && semantic[MutezToken.prim]) {
       return semantic[MutezToken.prim](val);

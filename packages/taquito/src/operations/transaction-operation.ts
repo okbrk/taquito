@@ -1,25 +1,20 @@
-import {
-  OperationContentsAndResult,
-  OperationContentsAndResultTransaction,
-  OperationContentsTransaction,
-} from '@taquito/rpc';
-import BigNumberJs from 'bignumber.js';
-type BigNumber = InstanceType<typeof BigNumberJs>;
-const BigNumber = BigNumberJs;
+import { OperationContentsAndResult, OperationContentsAndResultTransaction } from '@taquito/rpc';
+import BigNumber from 'bignumber.js';
 import { Context } from '../context';
-import { flattenErrors, flattenOperationResult, MergedOperationResult } from './errors';
+import { flattenErrors, flattenOperationResult, MergedOperationResult } from './operation-errors';
 import { Operation } from './operations';
 import {
   FeeConsumingOperation,
   ForgedBytes,
   GasConsumingOperation,
+  RPCTransferOperation,
   StorageConsumingOperation,
 } from './types';
 
 /**
- * Transaction operation provides utility functions to fetch a newly issued transaction
+ * @description Transaction operation provides utility functions to fetch a newly issued transaction
  *
- * @remarks Currently supports one transaction per operation
+ * @warn Currently supports one transaction per operation
  */
 export class TransactionOperation
   extends Operation
@@ -27,7 +22,7 @@ export class TransactionOperation
 {
   constructor(
     hash: string,
-    private readonly params: OperationContentsTransaction,
+    private readonly params: RPCTransferOperation,
     public readonly source: string,
     raw: ForgedBytes,
     results: OperationContentsAndResult[],
@@ -64,15 +59,15 @@ export class TransactionOperation
   }
 
   get fee() {
-    return Number(this.params.fee);
+    return this.params.fee;
   }
 
   get gasLimit() {
-    return Number(this.params.gas_limit);
+    return this.params.gas_limit;
   }
 
   get storageLimit() {
-    return Number(this.params.storage_limit);
+    return this.params.storage_limit;
   }
 
   private sumProp(arr: MergedOperationResult[], prop: keyof MergedOperationResult) {

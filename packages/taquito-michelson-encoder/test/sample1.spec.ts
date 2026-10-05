@@ -3,67 +3,89 @@ import { bigMapDiff, params, rpcContractResponse, storage, txParams } from '../d
 import { ParameterSchema } from '../src/schema/parameter';
 import { Schema } from '../src/schema/storage';
 import { MichelsonMap } from '../src/michelson-map';
-import { normalizeMichelsonValue } from './utils';
-import { Token } from '../src/taquito-michelson-encoder';
+import { expectMichelsonMap } from './utils';
 
 describe('Schema test', () => {
   it('Should extract schema properly', () => {
     const schema = new Schema(storage);
+    const s = schema.ExtractSchema();
+    expect(s).toEqual({
+      accounts: {
+        big_map: {
+          key: "address",
+          value: {
+            allowances: {
+              map: {
+                key: 'address',
+                value: 'nat',
+              },
+            },
+            balance: 'nat',
+          },
+        },
+      },
+      name: 'string',
+      owner: 'address',
+      symbol: 'string',
+      totalSupply: 'nat',
+      version: 'nat',
+    });
+
     expect(schema.generateSchema()).toEqual({
-      __michelsonType: 'pair',
+      __michelsonType: "pair",
       schema: {
         accounts: {
-          __michelsonType: 'big_map',
+          __michelsonType: "big_map",
           schema: {
             key: {
-              __michelsonType: 'address',
-              schema: 'address',
+              __michelsonType: "address",
+              schema: "address"
             },
             value: {
-              __michelsonType: 'pair',
+              __michelsonType: "pair",
               schema: {
                 allowances: {
-                  __michelsonType: 'map',
+                  __michelsonType: "map",
                   schema: {
                     key: {
-                      __michelsonType: 'address',
-                      schema: 'address',
+                      __michelsonType: "address",
+                      schema: "address"
                     },
                     value: {
-                      __michelsonType: 'nat',
-                      schema: 'nat',
+                      __michelsonType: "nat",
+                      schema: "nat"
                     },
                   },
                 },
                 balance: {
-                  __michelsonType: 'nat',
-                  schema: 'nat',
-                },
-              },
+                  __michelsonType: "nat",
+                  schema: "nat"
+                }
+              }
             },
           },
         },
         name: {
-          __michelsonType: 'string',
-          schema: 'string',
+          __michelsonType: "string",
+          schema: "string"
         },
         owner: {
-          __michelsonType: 'address',
-          schema: 'address',
+          __michelsonType: "address",
+          schema: "address"
         },
         symbol: {
-          __michelsonType: 'string',
-          schema: 'string',
+          __michelsonType: "string",
+          schema: "string"
         },
         totalSupply: {
-          __michelsonType: 'nat',
-          schema: 'nat',
+          __michelsonType: "nat",
+          schema: "nat"
         },
         version: {
-          __michelsonType: 'nat',
-          schema: 'nat',
+          __michelsonType: "nat",
+          schema: "nat"
         },
-      },
+      }
     });
   });
 
@@ -153,27 +175,25 @@ describe('Schema test', () => {
   it('Should parse storage properly', () => {
     const schema = new Schema(storage);
     const s = schema.Execute(rpcContractResponse.script.storage);
-    expect(normalizeMichelsonValue(s)).toEqual(
-      normalizeMichelsonValue({
-        accounts: {},
-        name: 'Token B',
-        owner: 'tz1ccqAEwfPgeoipnXtjAv1iucrpQv3DFmmS',
-        symbol: 'B',
-        totalSupply: new BigNumber('1000'),
-        version: new BigNumber('1'),
-      })
-    );
+    expect(s).toEqual({
+      accounts: expectMichelsonMap(),
+      name: 'Token B',
+      owner: 'tz1ccqAEwfPgeoipnXtjAv1iucrpQv3DFmmS',
+      symbol: 'B',
+      totalSupply: new BigNumber('1000'),
+      version: new BigNumber('1'),
+    });
   });
 
   it('Should parse big map properly', () => {
     const schema = new Schema(storage);
     const s = schema.ExecuteOnBigMapDiff(bigMapDiff);
-    expect(normalizeMichelsonValue(s)).toEqual(
-      normalizeMichelsonValue({
+    expect(s).toEqual(
+      expectMichelsonMap({
         tz1Ra8yQVQN4Nd7LpPQ6UT6t3bsWWqHZ9wa6: {
-          allowances: {
+          allowances: MichelsonMap.fromLiteral({
             tz1fPjyo55HwUAkd1xcL5vo6DGzJrkxAMpiD: new BigNumber('60'),
-          },
+          }),
           balance: new BigNumber('200'),
         },
       })
@@ -182,382 +202,204 @@ describe('Schema test', () => {
 
   it('Should build parameter schema properly', () => {
     const schema = new ParameterSchema(params);
-    const generateSchema_Legacy = {
-      __michelsonType: 'or',
+    const s = schema.ExtractSchema();
+    expect(s).toEqual({
+      allowance: {
+        '4': 'address',
+        '5': 'address',
+        NatNatContract: 'contract',
+      },
+      approve: {
+        '1': 'address',
+        '2': 'nat',
+      },
+      balanceOf: {
+        '3': 'address',
+        NatContract: 'contract',
+      },
+      createAccount: {
+        '5': 'address',
+        '6': 'nat',
+      },
+      createAccounts: {
+        list: {
+          "6": "address",
+          "7": "nat",
+        },
+      },
+      transfer: {
+        '0': 'address',
+        '1': 'nat',
+      },
+      transferFrom: {
+        '2': 'address',
+        '3': 'address',
+        '4': 'nat',
+      },
+    });
+
+    expect(schema.generateSchema()).toEqual({
+      __michelsonType: "or",
       schema: {
         allowance: {
-          __michelsonType: 'pair',
+          __michelsonType: "pair",
           schema: {
             '4': {
-              __michelsonType: 'address',
-              schema: 'address',
+              __michelsonType: "address",
+              schema: "address"
             },
             '5': {
-              __michelsonType: 'address',
-              schema: 'address',
+              __michelsonType: "address",
+              schema: "address"
             },
             NatNatContract: {
-              __michelsonType: 'contract',
+              __michelsonType: "contract",
               schema: {
                 parameter: {
-                  __michelsonType: 'pair',
+                  __michelsonType: "pair",
                   schema: {
                     '0': {
-                      __michelsonType: 'nat',
-                      schema: 'nat',
+                      __michelsonType: "nat",
+                      schema: "nat"
                     },
                     '1': {
-                      __michelsonType: 'nat',
-                      schema: 'nat',
-                    },
-                  },
-                },
-              },
-            },
-          },
+                      __michelsonType: "nat",
+                      schema: "nat"
+                    }
+                  }
+                }
+              }
+            }
+          }
         },
         approve: {
-          __michelsonType: 'pair',
+          __michelsonType: "pair",
           schema: {
             '1': {
-              __michelsonType: 'address',
-              schema: 'address',
+              __michelsonType: "address",
+              schema: "address"
             },
             '2': {
-              __michelsonType: 'nat',
-              schema: 'nat',
-            },
-          },
+              __michelsonType: "nat",
+              schema: "nat"
+            }
+          }
         },
         balanceOf: {
-          __michelsonType: 'pair',
+          __michelsonType: "pair",
           schema: {
             '3': {
-              __michelsonType: 'address',
-              schema: 'address',
+              __michelsonType: "address",
+              schema: "address"
             },
             NatContract: {
-              __michelsonType: 'contract',
+              __michelsonType: "contract",
               schema: {
                 parameter: {
-                  __michelsonType: 'nat',
-                  schema: 'nat',
-                },
-              },
+                  __michelsonType: "nat",
+                  schema: "nat"
+                }
+              }
             },
-          },
+          }
         },
         createAccount: {
-          __michelsonType: 'pair',
+          __michelsonType: "pair",
           schema: {
             '5': {
-              __michelsonType: 'address',
-              schema: 'address',
+              __michelsonType: "address",
+              schema: "address"
             },
             '6': {
-              __michelsonType: 'nat',
-              schema: 'nat',
+              __michelsonType: "nat",
+              schema: "nat"
             },
-          },
+          }
         },
         createAccounts: {
-          __michelsonType: 'list',
+          __michelsonType: "list",
           schema: {
-            __michelsonType: 'pair',
+            __michelsonType: "pair",
             schema: {
-              '6': {
-                __michelsonType: 'address',
-                schema: 'address',
+              "6": {
+                __michelsonType: "address",
+                schema: "address"
               },
-              '7': {
-                __michelsonType: 'nat',
-                schema: 'nat',
+              "7": {
+                __michelsonType: "nat",
+                schema: "nat"
               },
-            },
+            }
           },
         },
         transfer: {
-          __michelsonType: 'pair',
+          __michelsonType: "pair",
           schema: {
             '0': {
-              __michelsonType: 'address',
-              schema: 'address',
+              __michelsonType: "address",
+              schema: "address"
             },
             '1': {
-              __michelsonType: 'nat',
-              schema: 'nat',
+              __michelsonType: "nat",
+              schema: "nat"
             },
-          },
+          }
         },
         transferFrom: {
-          __michelsonType: 'pair',
+          __michelsonType: "pair",
           schema: {
             '2': {
-              __michelsonType: 'address',
-              schema: 'address',
+              __michelsonType: "address",
+              schema: "address"
             },
             '3': {
-              __michelsonType: 'address',
-              schema: 'address',
+              __michelsonType: "address",
+              schema: "address"
             },
             '4': {
-              __michelsonType: 'nat',
-              schema: 'nat',
+              __michelsonType: "nat",
+              schema: "nat"
             },
-          },
+          }
         },
-      },
-    };
-
-    const generateSchema_ResetFields = {
-      __michelsonType: 'or',
-      schema: {
-        allowance: {
-          __michelsonType: 'pair',
-          schema: {
-            '0': {
-              __michelsonType: 'address',
-              schema: 'address',
-            },
-            '1': {
-              __michelsonType: 'address',
-              schema: 'address',
-            },
-            NatNatContract: {
-              __michelsonType: 'contract',
-              schema: {
-                parameter: {
-                  __michelsonType: 'pair',
-                  schema: {
-                    '0': {
-                      __michelsonType: 'nat',
-                      schema: 'nat',
-                    },
-                    '1': {
-                      __michelsonType: 'nat',
-                      schema: 'nat',
-                    },
-                  },
-                },
-              },
-            },
-          },
-        },
-        approve: {
-          __michelsonType: 'pair',
-          schema: {
-            '0': {
-              __michelsonType: 'address',
-              schema: 'address',
-            },
-            '1': {
-              __michelsonType: 'nat',
-              schema: 'nat',
-            },
-          },
-        },
-        balanceOf: {
-          __michelsonType: 'pair',
-          schema: {
-            '0': {
-              __michelsonType: 'address',
-              schema: 'address',
-            },
-            NatContract: {
-              __michelsonType: 'contract',
-              schema: {
-                parameter: {
-                  __michelsonType: 'nat',
-                  schema: 'nat',
-                },
-              },
-            },
-          },
-        },
-        createAccount: {
-          __michelsonType: 'pair',
-          schema: {
-            '0': {
-              __michelsonType: 'address',
-              schema: 'address',
-            },
-            '1': {
-              __michelsonType: 'nat',
-              schema: 'nat',
-            },
-          },
-        },
-        createAccounts: {
-          __michelsonType: 'list',
-          schema: {
-            __michelsonType: 'pair',
-            schema: {
-              '0': {
-                __michelsonType: 'address',
-                schema: 'address',
-              },
-              '1': {
-                __michelsonType: 'nat',
-                schema: 'nat',
-              },
-            },
-          },
-        },
-        transfer: {
-          __michelsonType: 'pair',
-          schema: {
-            '0': {
-              __michelsonType: 'address',
-              schema: 'address',
-            },
-            '1': {
-              __michelsonType: 'nat',
-              schema: 'nat',
-            },
-          },
-        },
-        transferFrom: {
-          __michelsonType: 'pair',
-          schema: {
-            '0': {
-              __michelsonType: 'address',
-              schema: 'address',
-            },
-            '1': {
-              __michelsonType: 'address',
-              schema: 'address',
-            },
-            '2': {
-              __michelsonType: 'nat',
-              schema: 'nat',
-            },
-          },
-        },
-      },
-    };
-
-    Token.fieldNumberingStrategy = 'Legacy';
-    expect(schema.generateSchema()).toEqual(generateSchema_Legacy);
-    Token.fieldNumberingStrategy = 'ResetFieldNumbersInNestedObjects';
-    expect(schema.generateSchema()).toEqual(generateSchema_ResetFields);
-    Token.fieldNumberingStrategy = 'Latest';
-    expect(schema.generateSchema()).toEqual(generateSchema_ResetFields);
+      }
+    });
   });
 
   it('Should extract signature properly', () => {
     const schema = new ParameterSchema(params);
     const sig = schema.ExtractSignatures();
-    expect(sig).toContainEqual([
-      'allowance',
-      { __michelsonType: 'address', schema: 'address' },
-      { __michelsonType: 'address', schema: 'address' },
-      {
-        __michelsonType: 'contract',
-        schema: {
-          parameter: {
-            __michelsonType: 'pair',
-            schema: {
-              '0': { __michelsonType: 'nat', schema: 'nat' },
-              '1': { __michelsonType: 'nat', schema: 'nat' },
-            },
-          },
-        },
-      },
+    expect(sig).toContainEqual(['allowance', 'address', 'address', 'contract']);
+    expect(sig).toContainEqual(['approve', 'address', 'nat']);
+    expect(sig).toContainEqual(['balanceOf', 'address', 'contract']);
+    expect(sig).toContainEqual(['createAccount', 'address', 'nat']);
+    expect(sig).toContainEqual(["createAccounts", {
+      list: {
+        "6": "address",
+        "7": "nat"
+      }
+    }
     ]);
-    expect(sig).toContainEqual([
-      'approve',
-      { __michelsonType: 'address', schema: 'address' },
-      { __michelsonType: 'nat', schema: 'nat' },
-    ]);
-    expect(sig).toContainEqual([
-      'balanceOf',
-      { __michelsonType: 'address', schema: 'address' },
-      {
-        __michelsonType: 'contract',
-        schema: {
-          parameter: { __michelsonType: 'nat', schema: 'nat' },
-        },
-      },
-    ]);
-    expect(sig).toContainEqual([
-      'createAccount',
-      { __michelsonType: 'address', schema: 'address' },
-      { __michelsonType: 'nat', schema: 'nat' },
-    ]);
-    const createAccount_Legacy = {
-      __michelsonType: 'list',
-      schema: {
-        __michelsonType: 'pair',
-        schema: {
-          '6': { __michelsonType: 'address', schema: 'address' },
-          '7': { __michelsonType: 'nat', schema: 'nat' },
-        },
-      },
-    };
-    const createAccount_ResetFields = {
-      __michelsonType: 'list',
-      schema: {
-        __michelsonType: 'pair',
-        schema: {
-          '0': { __michelsonType: 'address', schema: 'address' },
-          '1': { __michelsonType: 'nat', schema: 'nat' },
-        },
-      },
-    };
-    Token.fieldNumberingStrategy = 'Legacy';
-    expect(schema.ExtractSignatures()).toContainEqual(['createAccounts', createAccount_Legacy]);
-    Token.fieldNumberingStrategy = 'ResetFieldNumbersInNestedObjects';
-    expect(schema.ExtractSignatures()).toContainEqual([
-      'createAccounts',
-      createAccount_ResetFields,
-    ]);
-    Token.fieldNumberingStrategy = 'Latest';
-    expect(schema.ExtractSignatures()).toContainEqual([
-      'createAccounts',
-      createAccount_ResetFields,
-    ]);
-    expect(sig).toContainEqual([
-      'transfer',
-      { __michelsonType: 'address', schema: 'address' },
-      { __michelsonType: 'nat', schema: 'nat' },
-    ]);
-    expect(sig).toContainEqual([
-      'transferFrom',
-      { __michelsonType: 'address', schema: 'address' },
-      { __michelsonType: 'address', schema: 'address' },
-      { __michelsonType: 'nat', schema: 'nat' },
-    ]);
+    expect(sig).toContainEqual(['transfer', 'address', 'nat']);
+    expect(sig).toContainEqual(['transferFrom', 'address', 'address', 'nat']);
   });
 
   it('Should parse parameter properly', () => {
     const schema = new ParameterSchema(params);
-    const execute_Legacy = {
+    const s = schema.Execute(txParams);
+    expect(s).toEqual({
       approve: {
         '1': 'tz1fPjyo55HwUAkd1xcL5vo6DGzJrkxAMpiD',
         '2': new BigNumber('60'),
       },
-    };
-    const execute_ResetFields = {
-      approve: {
-        '0': 'tz1fPjyo55HwUAkd1xcL5vo6DGzJrkxAMpiD',
-        '1': new BigNumber('60'),
-      },
-    };
-    Token.fieldNumberingStrategy = 'Legacy';
-    expect(schema.Execute(txParams)).toEqual(execute_Legacy);
-    Token.fieldNumberingStrategy = 'ResetFieldNumbersInNestedObjects';
-    expect(schema.Execute(txParams)).toEqual(execute_ResetFields);
-    Token.fieldNumberingStrategy = 'Latest';
-    expect(schema.Execute(txParams)).toEqual(execute_ResetFields);
+    });
   });
 
   it(`Should find the value that corresponds to the type ({ prim: 'string', annots: ['%name'] }) in top-level pairs of the storage`, () => {
     const typeOfValueToFind = { prim: 'string', annots: ['%name'] };
     const storageSchema = new Schema(storage);
-    const valueFound = storageSchema.FindFirstInTopLevelPair(
-      rpcContractResponse.script.storage,
-      typeOfValueToFind
-    );
+    const valueFound = storageSchema.FindFirstInTopLevelPair(rpcContractResponse.script.storage, typeOfValueToFind);
     expect(valueFound).toEqual({ string: 'Token B' });
   });
+
 });

@@ -2,15 +2,9 @@ import { Context } from '../context';
 import { attachKind, OpKind } from '../operations/types';
 import {
   WalletDelegateParams,
-  WalletIncreasePaidStorageParams,
   WalletOriginateParams,
   WalletProvider,
   WalletTransferParams,
-  WalletStakeParams,
-  WalletUnstakeParams,
-  WalletFinalizeUnstakeParams,
-  WalletTransferTicketParams,
-  WalletRegisterGlobalConstantParams,
 } from './interface';
 import { WalletParamsWithKind } from './wallet';
 
@@ -21,23 +15,7 @@ export class LegacyWalletProvider implements WalletProvider {
     return this.context.signer.publicKeyHash();
   }
 
-  async getPK(): Promise<string> {
-    return this.context.signer.publicKey();
-  }
-
   async mapTransferParamsToWalletParams(params: () => Promise<WalletTransferParams>) {
-    return attachKind(await params(), OpKind.TRANSACTION);
-  }
-
-  async mapStakeParamsToWalletParams(params: () => Promise<WalletStakeParams>) {
-    return attachKind(await params(), OpKind.TRANSACTION);
-  }
-
-  async mapUnstakeParamsToWalletParams(params: () => Promise<WalletUnstakeParams>) {
-    return attachKind(await params(), OpKind.TRANSACTION);
-  }
-
-  async mapFinalizeUnstakeParamsToWalletParams(params: () => Promise<WalletFinalizeUnstakeParams>) {
     return attachKind(await params(), OpKind.TRANSACTION);
   }
 
@@ -49,25 +27,8 @@ export class LegacyWalletProvider implements WalletProvider {
     return attachKind(await params(), OpKind.DELEGATION);
   }
 
-  async mapIncreasePaidStorageWalletParams(params: () => Promise<WalletIncreasePaidStorageParams>) {
-    return attachKind(await params(), OpKind.INCREASE_PAID_STORAGE);
-  }
-
-  async mapTransferTicketParamsToWalletParams(params: () => Promise<WalletTransferTicketParams>) {
-    return attachKind(await params(), OpKind.TRANSFER_TICKET);
-  }
-
-  async mapRegisterGlobalConstantParamsToWalletParams(params: () => Promise<WalletRegisterGlobalConstantParams>) {
-    return attachKind(await params(), OpKind.REGISTER_GLOBAL_CONSTANT);
-  }
-
   async sendOperations(params: WalletParamsWithKind[]) {
     const op = await this.context.batch.batch(params as any).send();
     return op.hash;
-  }
-
-  async sign(bytes: string, watermark?: Uint8Array) {
-    const { prefixSig } = await this.context.signer.sign(bytes, watermark);
-    return prefixSig;
   }
 }

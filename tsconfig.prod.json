@@ -1,19 +1,19 @@
 {
   "compilerOptions": {
     "moduleResolution": "node",
-    "target": "es2020",
-    "module": "es2020",
+    "target": "es6",
+    "module": "es2015",
     "lib": [
       "es2020",
       "dom"
     ],
     "strict": true,
-    "sourceMap": false,
+    "sourceMap": true,
     "declaration": true,
-    "skipLibCheck": true,
     "allowSyntheticDefaultImports": true,
     "noUnusedParameters": true,
     "noImplicitAny": true,
+    "downlevelIteration": true,
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
     "jsx": "react"

@@ -1,405 +1,4 @@
-import {
-  MichelsonContract,
-  MichelsonData,
-  MichelsonContractStorage,
-  MichelsonType,
-} from '@taquito/michel-codec';
-import { REVEAL_STORAGE_LIMIT, getRevealFee, getRevealGasLimit } from '../../src/constants';
-
-const scriptSample = {
-  code: [
-    {
-      prim: 'parameter',
-      args: [
-        {
-          prim: 'int',
-        },
-      ],
-    },
-    {
-      prim: 'storage',
-      args: [
-        {
-          prim: 'pair',
-          args: [
-            {
-              prim: 'int',
-            },
-            {
-              prim: 'address',
-            },
-          ],
-        },
-      ],
-    },
-    {
-      prim: 'code',
-      args: [
-        [
-          {
-            prim: 'PUSH',
-            args: [
-              {
-                prim: 'mutez',
-              },
-              {
-                int: '1000000',
-              },
-            ],
-          },
-          {
-            prim: 'AMOUNT',
-          },
-          [
-            {
-              prim: 'COMPARE',
-            },
-            {
-              prim: 'GE',
-            },
-            {
-              prim: 'IF',
-              args: [
-                [],
-                [
-                  {
-                    prim: 'PUSH',
-                    args: [
-                      {
-                        prim: 'string',
-                      },
-                      {
-                        string: 'You did not provide enough tez.',
-                      },
-                    ],
-                  },
-                  {
-                    prim: 'FAILWITH',
-                  },
-                ],
-              ],
-            },
-          ],
-          {
-            prim: 'UNPAIR',
-          },
-          {
-            prim: 'SWAP',
-          },
-          {
-            prim: 'DUP',
-          },
-          {
-            prim: 'CAR',
-          },
-          {
-            prim: 'DIP',
-            args: [
-              [
-                {
-                  prim: 'PUSH',
-                  args: [
-                    {
-                      prim: 'int',
-                    },
-                    {
-                      int: '15',
-                    },
-                  ],
-                },
-              ],
-            ],
-          },
-          [
-            {
-              prim: 'COMPARE',
-            },
-            {
-              prim: 'LT',
-            },
-            {
-              prim: 'IF',
-              args: [
-                [
-                  {
-                    prim: 'SWAP',
-                  },
-                  {
-                    prim: 'PUSH',
-                    args: [
-                      {
-                        prim: 'int',
-                      },
-                      {
-                        int: '34',
-                      },
-                    ],
-                  },
-                  [
-                    {
-                      prim: 'COMPARE',
-                    },
-                    {
-                      prim: 'EQ',
-                    },
-                    {
-                      prim: 'IF',
-                      args: [
-                        [
-                          {
-                            prim: 'SENDER',
-                          },
-                          {
-                            prim: 'CONTRACT',
-                            args: [
-                              {
-                                prim: 'unit',
-                              },
-                            ],
-                          },
-                          [
-                            {
-                              prim: 'IF_NONE',
-                              args: [
-                                [
-                                  {
-                                    prim: 'FAILWITH',
-                                  },
-                                ],
-                                [],
-                              ],
-                            },
-                          ],
-                          {
-                            prim: 'BALANCE',
-                          },
-                          {
-                            prim: 'UNIT',
-                          },
-                          {
-                            prim: 'TRANSFER_TOKENS',
-                          },
-                          {
-                            prim: 'NIL',
-                            args: [
-                              {
-                                prim: 'operation',
-                              },
-                            ],
-                          },
-                          {
-                            prim: 'SWAP',
-                          },
-                          {
-                            prim: 'CONS',
-                          },
-                          {
-                            prim: 'PAIR',
-                          },
-                        ],
-                        [
-                          {
-                            prim: 'UNPAIR',
-                          },
-                          {
-                            prim: 'PUSH',
-                            args: [
-                              {
-                                prim: 'int',
-                              },
-                              {
-                                int: '1',
-                              },
-                            ],
-                          },
-                          {
-                            prim: 'ADD',
-                          },
-                          {
-                            prim: 'PAIR',
-                          },
-                          {
-                            prim: 'NIL',
-                            args: [
-                              {
-                                prim: 'operation',
-                              },
-                            ],
-                          },
-                          {
-                            prim: 'PAIR',
-                          },
-                        ],
-                      ],
-                    },
-                  ],
-                ],
-                [
-                  {
-                    prim: 'DIP',
-                    args: [
-                      [
-                        {
-                          prim: 'DROP',
-                        },
-                      ],
-                    ],
-                  },
-                  {
-                    prim: 'DUP',
-                  },
-                  {
-                    prim: 'CDR',
-                  },
-                  {
-                    prim: 'CONTRACT',
-                    args: [
-                      {
-                        prim: 'unit',
-                      },
-                    ],
-                  },
-                  [
-                    {
-                      prim: 'IF_NONE',
-                      args: [
-                        [
-                          {
-                            prim: 'FAILWITH',
-                          },
-                        ],
-                        [],
-                      ],
-                    },
-                  ],
-                  {
-                    prim: 'BALANCE',
-                  },
-                  {
-                    prim: 'UNIT',
-                  },
-                  {
-                    prim: 'TRANSFER_TOKENS',
-                  },
-                  {
-                    prim: 'NIL',
-                    args: [
-                      {
-                        prim: 'operation',
-                      },
-                    ],
-                  },
-                  {
-                    prim: 'SWAP',
-                  },
-                  {
-                    prim: 'CONS',
-                  },
-                  {
-                    prim: 'PAIR',
-                  },
-                ],
-              ],
-            },
-          ],
-        ],
-      ],
-    },
-  ],
-  storage: {
-    prim: 'Pair',
-    args: [
-      {
-        int: '0',
-      },
-      {
-        string: 'tz1QZ6KY7d3BuZDT1d19dUxoQrtFPN2QJ3hn',
-      },
-    ],
-  },
-};
-
-export const revealOp = (source: string) => ({
-  counter: '1',
-  fee: String(getRevealFee(source)),
-  gas_limit: String(getRevealGasLimit(source)),
-  kind: 'reveal',
-  public_key: 'test_pub_key',
-  source,
-  storage_limit: String(REVEAL_STORAGE_LIMIT),
-});
-
-export const originateResults = {
-  opbytes: 'test',
-  opOb: {
-    branch: 'test',
-    contents: [
-      revealOp('tz1gvF4cD2dDtqitL3ZTraggSR1Mju2BKFEM'),
-      {
-        kind: 'origination',
-        fee: '10000',
-        gas_limit: '10600',
-        storage_limit: '257',
-        balance: '200000000',
-        script: scriptSample,
-        delegate: 'test_delegate',
-        source: 'tz1gvF4cD2dDtqitL3ZTraggSR1Mju2BKFEM',
-        counter: '2',
-      },
-    ],
-    protocol: 'test_proto',
-    signature: 'test_sig',
-  },
-  counter: 0,
-};
-
-export const originateResultsMutezTrue = {
-  opbytes: 'test',
-  opOb: {
-    branch: 'test',
-    contents: [
-      revealOp('tz1gvF4cD2dDtqitL3ZTraggSR1Mju2BKFEM'),
-      {
-        kind: 'origination',
-        fee: '10000',
-        gas_limit: '10600',
-        storage_limit: '257',
-        balance: '200',
-        script: scriptSample,
-        delegate: 'test_delegate',
-        source: 'tz1gvF4cD2dDtqitL3ZTraggSR1Mju2BKFEM',
-        counter: '2',
-      },
-    ],
-    protocol: 'test_proto',
-    signature: 'test_sig',
-  },
-  counter: 0,
-};
-
-export const originateResultsEstimate = {
-  opbytes: 'test',
-  opOb: {
-    branch: 'test',
-    contents: [
-      revealOp('tz1gvF4cD2dDtqitL3ZTraggSR1Mju2BKFEM'),
-      {
-        kind: 'origination',
-        fee: '301',
-        gas_limit: '1',
-        storage_limit: '1000',
-        balance: '200000000',
-        script: scriptSample,
-        delegate: 'test_delegate',
-        source: 'tz1gvF4cD2dDtqitL3ZTraggSR1Mju2BKFEM',
-        counter: '2',
-      },
-    ],
-    protocol: 'test_proto',
-    signature: 'test_sig',
-  },
-  counter: 0,
-};
+import { MichelsonContract, MichelsonData, MichelsonContractStorage, MichelsonType } from "@taquito/michel-codec";
 
 export const sampleStorage: MichelsonData = {
   prim: 'Pair',
@@ -522,170 +121,176 @@ code {
      };
 `;
 
-export const miSample: MichelsonContract = [
-  { prim: 'parameter', args: [{ prim: 'int' }] },
-  {
-    prim: 'storage',
-    args: [{ prim: 'pair', args: [{ prim: 'int' }, { prim: 'address' }] }],
-  },
-  {
-    prim: 'code',
-    args: [
-      [
-        {
-          prim: 'PUSH',
-          args: [{ prim: 'mutez' }, { int: '1000000' }],
-        },
-        { prim: 'AMOUNT' },
+export const miSample: MichelsonContract =
+  [
+    { prim: 'parameter', args: [{ prim: 'int' }] },
+    {
+      prim: 'storage',
+      args: [
+        { prim: 'pair', args: [{ prim: 'int' }, { prim: 'address' }] }
+      ]
+    },
+    {
+      prim: 'code',
+      args: [
         [
-          { prim: 'COMPARE' },
-          { prim: 'GE' },
           {
-            prim: 'IF',
-            args: [
-              [],
-              [
-                {
-                  prim: 'PUSH',
-                  args: [{ prim: 'string' }, { string: 'You did not provide enough tez.' }],
-                },
-                { prim: 'FAILWITH' },
-              ],
-            ],
+            prim: 'PUSH',
+            args: [{ prim: 'mutez' }, { int: '1000000' }]
           },
-        ],
-        [
+          { prim: 'AMOUNT' },
           [
-            { prim: 'DUP' },
-            { prim: 'CAR' },
+            { prim: 'COMPARE' },
+            { prim: 'GE' },
             {
-              prim: 'DIP',
-              args: [[{ prim: 'CDR' }]],
-            },
+              prim: 'IF',
+              args: [
+                [],
+                [
+                  {
+                    prim: 'PUSH',
+                    args: [
+                      { prim: 'string' },
+                      { string: 'You did not provide enough tez.' }
+                    ]
+                  },
+                  { prim: 'FAILWITH' }
+                ]
+              ]
+            }
           ],
-        ],
-        { prim: 'SWAP' },
-        { prim: 'DUP' },
-        { prim: 'CAR' },
-        {
-          prim: 'DIP',
-          args: [
+          [
             [
+              { prim: 'DUP' },
+              { prim: 'CAR' },
               {
-                prim: 'PUSH',
-                args: [{ prim: 'int' }, { int: '15' }],
-              },
-            ],
+                prim: 'DIP',
+                args: [[{ prim: 'CDR' }]]
+              }
+            ]
           ],
-        },
-        [
-          { prim: 'COMPARE' },
-          { prim: 'LT' },
+          { prim: 'SWAP' },
+          { prim: 'DUP' },
+          { prim: 'CAR' },
           {
-            prim: 'IF',
+            prim: 'DIP',
             args: [
               [
-                { prim: 'SWAP' },
                 {
                   prim: 'PUSH',
-                  args: [{ prim: 'int' }, { int: '34' }],
-                },
+                  args: [{ prim: 'int' }, { int: '15' }]
+                }
+              ]
+            ]
+          },
+          [
+            { prim: 'COMPARE' },
+            { prim: 'LT' },
+            {
+              prim: 'IF',
+              args: [
                 [
-                  { prim: 'COMPARE' },
-                  { prim: 'EQ' },
+                  { prim: 'SWAP' },
                   {
-                    prim: 'IF',
-                    args: [
-                      [
-                        { prim: 'SENDER' },
-                        {
-                          prim: 'CONTRACT',
-                          args: [{ prim: 'unit' }],
-                        },
+                    prim: 'PUSH',
+                    args: [{ prim: 'int' }, { int: '34' }]
+                  },
+                  [
+                    { prim: 'COMPARE' },
+                    { prim: 'EQ' },
+                    {
+                      prim: 'IF',
+                      args: [
                         [
+                          { prim: 'SENDER' },
                           {
-                            prim: 'IF_NONE',
-                            args: [[{ prim: 'FAILWITH' }], []],
+                            prim: 'CONTRACT',
+                            args: [{ prim: 'unit' }]
                           },
+                          [
+                            {
+                              prim: 'IF_NONE',
+                              args: [[{ prim: 'FAILWITH' }], []]
+                            }
+                          ],
+                          { prim: 'BALANCE' },
+                          { prim: 'UNIT' },
+                          { prim: 'TRANSFER_TOKENS' },
+                          {
+                            prim: 'NIL',
+                            args: [{ prim: 'operation' }]
+                          },
+                          { prim: 'SWAP' },
+                          { prim: 'CONS' },
+                          { prim: 'PAIR' }
                         ],
-                        { prim: 'BALANCE' },
-                        { prim: 'UNIT' },
-                        { prim: 'TRANSFER_TOKENS' },
-                        {
-                          prim: 'NIL',
-                          args: [{ prim: 'operation' }],
-                        },
-                        { prim: 'SWAP' },
-                        { prim: 'CONS' },
-                        { prim: 'PAIR' },
-                      ],
-                      [
                         [
                           [
-                            { prim: 'DUP' },
-                            { prim: 'CAR' },
-                            {
-                              prim: 'DIP',
-                              args: [[{ prim: 'CDR' }]],
-                            },
+                            [
+                              { prim: 'DUP' },
+                              { prim: 'CAR' },
+                              {
+                                prim: 'DIP',
+                                args: [[{ prim: 'CDR' }]]
+                              }
+                            ]
                           ],
-                        ],
-                        {
-                          prim: 'PUSH',
-                          args: [{ prim: 'int' }, { int: '1' }],
-                        },
-                        { prim: 'ADD' },
-                        { prim: 'PAIR' },
-                        {
-                          prim: 'NIL',
-                          args: [{ prim: 'operation' }],
-                        },
-                        { prim: 'PAIR' },
-                      ],
-                    ],
-                  },
+                          {
+                            prim: 'PUSH',
+                            args: [{ prim: 'int' }, { int: '1' }]
+                          },
+                          { prim: 'ADD' },
+                          { prim: 'PAIR' },
+                          {
+                            prim: 'NIL',
+                            args: [{ prim: 'operation' }]
+                          },
+                          { prim: 'PAIR' }
+                        ]
+                      ]
+                    }
+                  ]
                 ],
-              ],
-              [
-                {
-                  prim: 'DIP',
-                  args: [[{ prim: 'DROP' }]],
-                },
-                { prim: 'DUP' },
-                { prim: 'CDR' },
-                { prim: 'CONTRACT', args: [{ prim: 'unit' }] },
                 [
                   {
-                    prim: 'IF_NONE',
-                    args: [[{ prim: 'FAILWITH' }], []],
+                    prim: 'DIP',
+                    args: [[{ prim: 'DROP' }]]
                   },
-                ],
-                { prim: 'BALANCE' },
-                { prim: 'UNIT' },
-                { prim: 'TRANSFER_TOKENS' },
-                { prim: 'NIL', args: [{ prim: 'operation' }] },
-                { prim: 'SWAP' },
-                { prim: 'CONS' },
-                { prim: 'PAIR' },
-              ],
-            ],
-          },
-        ],
-      ],
-    ],
-  },
-];
+                  { prim: 'DUP' },
+                  { prim: 'CDR' },
+                  { prim: 'CONTRACT', args: [{ prim: 'unit' }] },
+                  [
+                    {
+                      prim: 'IF_NONE',
+                      args: [[{ prim: 'FAILWITH' }], []]
+                    }
+                  ],
+                  { prim: 'BALANCE' },
+                  { prim: 'UNIT' },
+                  { prim: 'TRANSFER_TOKENS' },
+                  { prim: 'NIL', args: [{ prim: 'operation' }] },
+                  { prim: 'SWAP' },
+                  { prim: 'CONS' },
+                  { prim: 'PAIR' }
+                ]
+              ]
+            }
+          ]
+        ]
+      ]
+    }
+  ];
 
 export const miInit = '(Pair 0 "tz1QZ6KY7d3BuZDT1d19dUxoQrtFPN2QJ3hn")';
 
 export const miStorage: MichelsonData = {
-  prim: 'Pair',
+  prim: "Pair",
   args: [
     {
-      int: '0',
+      int: "0",
     },
     {
-      string: 'tz1QZ6KY7d3BuZDT1d19dUxoQrtFPN2QJ3hn',
+      string: "tz1QZ6KY7d3BuZDT1d19dUxoQrtFPN2QJ3hn",
     },
   ],
 };
@@ -2336,7 +1941,8 @@ export const tokenCode: MichelsonContract = [
                                                                                     prim: 'map',
                                                                                     args: [
                                                                                       {
-                                                                                        prim: 'address',
+                                                                                        prim:
+                                                                                          'address',
                                                                                       },
                                                                                       {
                                                                                         prim: 'nat',
@@ -2359,7 +1965,8 @@ export const tokenCode: MichelsonContract = [
                                                                                   prim: 'EMPTY_MAP',
                                                                                   args: [
                                                                                     {
-                                                                                      prim: 'address',
+                                                                                      prim:
+                                                                                        'address',
                                                                                     },
                                                                                     { prim: 'nat' },
                                                                                   ],
@@ -2759,16 +2366,20 @@ export const tokenCode: MichelsonContract = [
                                                                                       prim: 'pair',
                                                                                       args: [
                                                                                         {
-                                                                                          prim: 'nat',
+                                                                                          prim:
+                                                                                            'nat',
                                                                                         },
                                                                                         {
-                                                                                          prim: 'map',
+                                                                                          prim:
+                                                                                            'map',
                                                                                           args: [
                                                                                             {
-                                                                                              prim: 'address',
+                                                                                              prim:
+                                                                                                'address',
                                                                                             },
                                                                                             {
-                                                                                              prim: 'nat',
+                                                                                              prim:
+                                                                                                'nat',
                                                                                             },
                                                                                           ],
                                                                                         },
@@ -2984,36 +2595,39 @@ export const entrypointsGenericMultisig = {
         {
           prim: 'pair',
           args: [
-            { prim: 'nat', annots: ['%counter'] },
+            { prim: 'nat', annots: [ '%counter' ] },
             {
               prim: 'or',
               args: [
                 {
                   prim: 'lambda',
-                  args: [{ prim: 'unit' }, { prim: 'list', args: [{ prim: 'operation' }] }],
-                  annots: ['%operation'],
+                  args: [
+                    { prim: 'unit' },
+                    { prim: 'list', args: [ { prim: 'operation' } ] }
+                  ],
+                  annots: [ '%operation' ]
                 },
                 {
                   prim: 'pair',
                   args: [
-                    { prim: 'nat', annots: ['%threshold'] },
-                    { prim: 'list', args: [{ prim: 'key' }], annots: ['%keys'] },
+                    { prim: 'nat', annots: [ '%threshold' ] },
+                    { prim: 'list', args: [ { prim: 'key' } ], annots: [ '%keys' ] }
                   ],
-                  annots: ['%change_keys'],
-                },
+                  annots: [ '%change_keys' ]
+                }
               ],
-              annots: [':action'],
-            },
+              annots: [ ':action' ]
+            }
           ],
-          annots: [':payload'],
+          annots: [ ':payload' ]
         },
         {
           prim: 'list',
-          args: [{ prim: 'option', args: [{ prim: 'signature' }] }],
-          annots: ['%sigs'],
-        },
-      ],
+          args: [ { prim: 'option', args: [ { prim: 'signature' } ] } ],
+          annots: [ '%sigs' ]
+        }
+      ]
     },
-    default: { prim: 'unit' },
-  },
+    default: { prim: 'unit' }
+  }
 };

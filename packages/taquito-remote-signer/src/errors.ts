@@ -1,59 +1,48 @@
-import { PermissionDeniedError, TaquitoError } from '@taquito/core';
-
 /**
  *  @category Error
- *  Error that indicates an unauthorized operation being attempted
+ *  @description Error that indicates a failure in grabbing the public key
  */
-export class OperationNotAuthorizedError extends PermissionDeniedError {
-  constructor(public readonly message: string, public readonly cause: any) {
-    super();
-    this.name = 'OperationNotAuthorized';
+export class KeyNotFoundError extends Error {
+  public name = 'KeyNotFoundError';
+  constructor(public message: string, public innerException: any) {
+    super(message);
   }
 }
 
 /**
  *  @category Error
- *  Error that indicates bad signing data
+ *  @description Error that indicates an unauthorized operation being attempted
  */
-export class BadSigningDataError extends TaquitoError {
-  constructor(
-    public readonly cause: any,
-    public readonly bytes: string,
-    readonly watermark?: Uint8Array
-  ) {
-    super();
-    this.name = 'BadSigningData';
-    this.message = watermark
-      ? `Invalid signing data with watermark`
-      : `Invalid signing data: "${bytes}"`;
+export class OperationNotAuthorizedError extends Error {
+  public name = 'OperationNotAuthorized';
+  constructor(public message: string, public innerException: any) {
+    super(message);
   }
 }
 
 /**
  *  @category Error
- *  Error that indicates a mismatch between the initialized and the requested public key
+ *  @description Error that indicates bad signing data
  */
-export class PublicKeyVerificationError extends TaquitoError {
-  constructor(
-    public readonly requestedPk: string,
-    public readonly requestedPkh: string,
-    public readonly initializedPkh: string
-  ) {
-    super();
-    this.name = 'PublicKeyVerificationFailedError';
-    this.message = `Requested pk "${requestedPk}" has pkh "${requestedPkh}" deesn't match initialized pkh "${initializedPkh}."`;
+export class BadSigningDataError extends Error {
+  public name = 'BadSigningData';
+  constructor(public message: string, public innerException: any, public readonly data: any) {
+    super(message);
   }
 }
 
 /**
  *  @category Error
- *  Error
+ *  @description Error that indicates a mismatch between the initialized and the requested public key
  */
-export class SignatureVerificationError extends TaquitoError {
-  public name = 'SignatureVerificationFailedError';
-  constructor(public readonly bytes: string, public readonly signature: string) {
-    super();
-    this.name = 'SignatureVerificationFailedError';
-    this.message = `Invalid signature of bytes failed verification agaisnt public key.`;
+export class PublicKeyMismatch extends Error {
+  public name = 'PublicKeyMismatch';
+  constructor(public requested: string, initialized: string) {
+    super(
+      `Requested public key hash does not match the initialized public key hash: {
+        requested: ${requested},
+        initialized: ${initialized}
+      }`
+    );
   }
 }

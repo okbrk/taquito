@@ -1,63 +1,18 @@
-import {
-  CompositeForger,
-  RpcForger,
-  TezosToolkit,
-  Protocols,
-  TaquitoLocalForger,
-  PollingSubscribeProvider,
-  importKey,
-} from '@taquito/taquito';
+import { CompositeForger, RpcForger, TezosToolkit, Protocols, TaquitoLocalForger, PollingSubscribeProvider } from '@taquito/taquito';
 import { RemoteSigner } from '@taquito/remote-signer';
 import { HttpBackend } from '@taquito/http-utils';
-import { b58Encode, PrefixV2 } from '@taquito/utils';
-import { InMemorySigner } from '@taquito/signer';
+import { b58cencode, Prefix, prefix } from '@taquito/utils';
+import { importKey, InMemorySigner } from '@taquito/signer';
 import { RpcClient, RpcClientCache } from '@taquito/rpc';
-import * as nodeCrypto from 'crypto';
-import { AsyncPrefetchBuffer } from './async-prefetch-buffer';
-import { KnownContracts } from './known-contracts';
-import { knownContractsShadownet } from './known-contracts-shadownet';
-import { knownContractsWeeklynet } from './known-contracts-weeklynet';
-import { knownContractsTezlinkshadownet } from './known-contracts-tezlinkshadownet';
+import { knownBigMapContractProtoALph, knownContractProtoALph, knownOnChainViewContractAddressProtoALph, knownSaplingContractProtoALph, knownTzip12BigMapOffChainContractProtoALph, txRollupAddressProtoALph } from './known-contracts-ProtoALph';
+import { knownContractPtKathman, knownBigMapContractPtKathman, knownTzip12BigMapOffChainContractPtKathman, knownSaplingContractPtKathman, knownOnChainViewContractAddressPtKathman, txRollupAddressPtKathman } from './known-contracts-PtKathman';
+import { knownContractPtJakart2, knownBigMapContractPtJakart2, knownTzip12BigMapOffChainContractPtJakart2, knownSaplingContractPtJakart2, knownOnChainViewContractAddressPtJakart2, txRollupAddressPtJakart2 } from './known-contracts-PtJakart2';
 
-const integrationDiagnosticsEnabled = /^(1|true)$/i.test(
-  process.env['TAQUITO_ITEST_DIAGNOSTICS'] ?? ''
-);
-const parsedLowBalanceWarnMutez = Number(
-  process.env['TAQUITO_DIAG_BALANCE_WARN_MUTEZ'] ?? '9000000'
-);
-const parsedFreshKeyMaxAttempts = Number(process.env['TAQUITO_FRESH_KEY_MAX_ATTEMPTS'] ?? '');
-const parsedFreshKeyRetryMs = Number(process.env['TAQUITO_FRESH_KEY_RETRY_MS'] ?? '0');
-const parsedKeygenRequestTimeoutMs = Number(
-  process.env['TAQUITO_KEYGEN_REQUEST_TIMEOUT_MS'] ?? '30000'
-);
-const parsedFreshKeyPrefetch = Number(process.env['TAQUITO_FRESH_KEY_PREFETCH'] ?? '2');
-const lowBalanceWarnMutez =
-  Number.isFinite(parsedLowBalanceWarnMutez) && parsedLowBalanceWarnMutez > 0
-    ? parsedLowBalanceWarnMutez
-    : 9000000;
-const defaultFreshKeyMaxAttempts =
-  Number.isFinite(parsedFreshKeyMaxAttempts) && parsedFreshKeyMaxAttempts > 0
-    ? Math.floor(parsedFreshKeyMaxAttempts)
-    : 5;
-const defaultFreshKeyRetryMs =
-  Number.isFinite(parsedFreshKeyRetryMs) && parsedFreshKeyRetryMs >= 0
-    ? Math.floor(parsedFreshKeyRetryMs)
-    : 0;
-const keygenRequestTimeoutMs =
-  Number.isFinite(parsedKeygenRequestTimeoutMs) && parsedKeygenRequestTimeoutMs > 0
-    ? Math.floor(parsedKeygenRequestTimeoutMs)
-    : 30_000;
-const freshKeyPrefetch =
-  Number.isFinite(parsedFreshKeyPrefetch) && parsedFreshKeyPrefetch >= 0
-    ? Math.floor(parsedFreshKeyPrefetch)
-    : 2;
+const nodeCrypto = require('crypto');
 
-export const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
-
-// "taq" in two-digit alphabet positions: t=20, a=01, q=17 → 200_117 mutez → 0.200117 tez
-export const TAQUITO_MUTEZ = 200_117;
-export const TEST_FUNDS_RECOVERY_ADDRESS =
-  process.env['TAQUITO_TEST_FUNDS_RECOVERY_ADDRESS'] || 'tz1bRt6Lo9KRNEUF9voCwkjR2pkMU9xJuYMB';
+if (typeof jest !== 'undefined') {
+  jest.setTimeout(60000 * 10);
+}
 
 enum ForgerType {
   LOCAL = 'local',
@@ -65,24 +20,9 @@ enum ForgerType {
   COMPOSITE = 'composite',
 }
 
-export const isSandbox = (config: { rpc: string }) => {
-  return (
-    config.rpc.includes('localhost') ||
-    config.rpc.includes('0.0.0.0') ||
-    config.rpc.includes('127.0.0.1')
-  );
-};
-
 const forgers: ForgerType[] = [ForgerType.COMPOSITE];
 
-// user running integration test can pass environment variable TEZOS_NETWORK_TYPE=sandbox to specify which network to run against
-export enum NetworkType {
-  TESTNET, // corresponds shadownet, weeklynet, etc.
-  SANDBOX, // corresponds to flextesa local chain
-}
-
 interface Config {
-  networkName: string;
   rpc: string;
   pollingIntervalMilliseconds?: string;
   rpcCacheMilliseconds: string;
@@ -92,391 +32,179 @@ interface Config {
   knownTzip1216Contract: string;
   knownSaplingContract: string;
   knownViewContract: string;
-  knownTicketContract: string;
+  txRollupWithdrawContract: string;
+  txRollupDepositContract: string;
+  txRollupAddress: string;
   protocol: Protocols;
   signerConfig: EphemeralConfig | SecretKeyConfig;
-  networkType: NetworkType;
 }
 /**
  * SignerType specifies the different signer options used in the integration test suite. EPHEMERAL_KEY relies on a the [tezos-key-get-api](https://github.com/ecadlabs/tezos-key-gen-api)
  */
 export enum SignerType {
   EPHEMERAL_KEY,
-  SECRET_KEY,
+  SECRET_KEY
 }
 
 interface ConfigWithSetup extends Config {
   lib: TezosToolkit;
-  setup: (options?: boolean | SetupOptions) => Promise<void>;
-  createAddress: (prefix?: PrefixV2) => Promise<TezosToolkit>;
-}
-
-interface SetupOptions {
-  preferFreshKey?: boolean;
-  requireUnrevealed?: boolean;
-  minBalanceMutez?: number;
-  maxAttempts?: number;
-  retryDelayMs?: number;
+  setup: (preferFreshKey?: boolean) => Promise<void>;
+  createAddress: () => Promise<TezosToolkit>;
 }
 /**
  * EphemeralConfig contains configuration for interacting with the [tezos-key-gen-api](https://github.com/ecadlabs/tezos-key-gen-api)
  */
 interface EphemeralConfig {
   type: SignerType.EPHEMERAL_KEY;
-  keygenBaseUrl: string;
-  networkPath: string;
+  keyUrl: string;
   requestHeaders: { [key: string]: string };
 }
 
-interface KeygenV2KeyRequest {
-  min_balance_mutez?: number;
-  require_unrevealed?: boolean;
-  key_prefixes?: string[];
-  max_selection_attempts?: number;
-}
-
-interface KeygenV2FreshKeyResponse {
-  secret_key: string;
-  pkh: string;
-}
-
-interface FreshKeyCandidate {
-  keyResponse: KeygenV2FreshKeyResponse;
-  keyRequestDurationMs: number;
-}
-
-interface KeygenV2EphemeralResponse {
-  id: number | string;
-  pkh: string;
-}
-
 interface SecretKeyConfig {
-  type: SignerType.SECRET_KEY;
-  secret_key: string;
-  password?: string;
+  type: SignerType.SECRET_KEY,
+  secret_key: string,
+  password?: string
 }
 
-const diagnosticsLog = (payload: Record<string, unknown>) => {
-  if (!integrationDiagnosticsEnabled) {
-    return;
-  }
-  // Structured logs make post-run analysis significantly easier.
-  console.log(`[itest:diag] ${JSON.stringify(payload)}`);
-};
-
-const toErrorMessage = (error: unknown) => {
-  if (error instanceof Error) {
-    return `${error.name}: ${error.message}`;
-  }
-  return String(error);
-};
-
-interface SignerStateSnapshot {
-  pkh: string;
-  managerKey: unknown;
-  revealed: boolean;
-  balanceMutez: string | null;
-  balanceAsNumber: number | null;
-}
-
-const readSignerState = async (
-  Tezos: TezosToolkit,
-  pkhHint?: string
-): Promise<SignerStateSnapshot> => {
-  const pkh = pkhHint ?? (await Tezos.signer.publicKeyHash());
-  const [managerKeyResult, balanceResult] = await Promise.allSettled([
-    Tezos.rpc.getManagerKey(pkh),
-    Tezos.rpc.getBalance(pkh),
-  ]);
-
-  const managerKey = managerKeyResult.status === 'fulfilled' ? managerKeyResult.value : null;
-  const balanceMutez = balanceResult.status === 'fulfilled' ? balanceResult.value.toString() : null;
-  const balanceAsNumber =
-    balanceMutez !== null && Number.isFinite(Number(balanceMutez)) ? Number(balanceMutez) : null;
-
-  return {
-    pkh,
-    managerKey,
-    revealed: !!managerKey,
-    balanceMutez,
-    balanceAsNumber,
-  };
-};
-
-const normalizeSetupOptions = (options?: boolean | SetupOptions): Required<SetupOptions> => {
-  const normalized = typeof options === 'boolean' ? { preferFreshKey: options } : (options ?? {});
-  return {
-    preferFreshKey: normalized.preferFreshKey ?? false,
-    requireUnrevealed: normalized.requireUnrevealed ?? false,
-    minBalanceMutez:
-      typeof normalized.minBalanceMutez === 'number' &&
-      Number.isFinite(normalized.minBalanceMutez) &&
-      normalized.minBalanceMutez >= 0
-        ? normalized.minBalanceMutez
-        : 0,
-    maxAttempts:
-      typeof normalized.maxAttempts === 'number' &&
-      Number.isFinite(normalized.maxAttempts) &&
-      normalized.maxAttempts > 0
-        ? Math.floor(normalized.maxAttempts)
-        : defaultFreshKeyMaxAttempts,
-    retryDelayMs:
-      typeof normalized.retryDelayMs === 'number' &&
-      Number.isFinite(normalized.retryDelayMs) &&
-      normalized.retryDelayMs >= 0
-        ? Math.floor(normalized.retryDelayMs)
-        : defaultFreshKeyRetryMs,
-  };
-};
-
-const logSignerState = async (
-  Tezos: TezosToolkit,
-  context: {
-    signerMode: 'fresh' | 'ephemeral' | 'secret' | 'generated';
-    keyUrl?: string;
-    pkhHint?: string;
-    networkName?: string;
-    rpc?: string;
-    preferFreshKey?: boolean;
-  },
-  signerState?: SignerStateSnapshot
-) => {
-  if (!integrationDiagnosticsEnabled) {
-    return;
-  }
-
-  try {
-    const state = signerState ?? (await readSignerState(Tezos, context.pkhHint));
-
-    diagnosticsLog({
-      stage: 'signer-state',
-      ...context,
-      pkh: state.pkh,
-      revealed: state.revealed,
-      managerKey: state.managerKey,
-      balanceMutez: state.balanceMutez,
-      lowBalanceWarning:
-        typeof state.balanceAsNumber === 'number' && Number.isFinite(state.balanceAsNumber)
-          ? state.balanceAsNumber < lowBalanceWarnMutez
-          : undefined,
-    });
-  } catch (error) {
-    diagnosticsLog({
-      stage: 'signer-state-error',
-      ...context,
-      error: toErrorMessage(error),
-    });
-  }
-};
-
-export const defaultSecretKey: SecretKeyConfig = {
+const defaultSecretKey: SecretKeyConfig = {
   // pkh is tz2RqxsYQyFuP9amsmrr25x9bUcBMWXGvjuD
   type: SignerType.SECRET_KEY,
   secret_key: process.env['SECRET_KEY'] || 'spsk21y52Cp943kGnqPBSjXMC2xf1hz8QDGGih7AJdFqhxPcm1ihRN',
   password: process.env['PASSWORD_SECRET_KEY'] || undefined,
-};
-
-const defaultKeygenBaseUrl = process.env['GITHUB_ACTIONS']
-  ? 'http://keygen-direct.ecadinfra.com'
-  : 'https://keygen.ecadinfra.com';
-
-const keygenBaseUrl = (process.env['TAQUITO_KEYGEN_URL'] || defaultKeygenBaseUrl).replace(
-  /\/+$/,
-  ''
-);
-
-const defaultEphemeralConfig = (networkPath: string): EphemeralConfig => ({
-  type: SignerType.EPHEMERAL_KEY as SignerType.EPHEMERAL_KEY,
-  keygenBaseUrl,
-  networkPath,
-  requestHeaders: { Authorization: 'Bearer taquito-example' },
-});
-
-const sharedKeygenHttpClient = new HttpBackend();
-const freshKeyPools = new Map<string, AsyncPrefetchBuffer<FreshKeyCandidate>>();
-
-const getKeygenEndpoints = ({ keygenBaseUrl, networkPath }: EphemeralConfig) => ({
-  v2FreshKeyUrl: `${keygenBaseUrl}/v2/${networkPath}`,
-  v2EphemeralLeaseUrl: `${keygenBaseUrl}/v2/${networkPath}/ephemeral`,
-  v1EphemeralSignerBaseUrl: `${keygenBaseUrl}/${networkPath}/ephemeral`,
-});
-
-const getFreshKeyPoolId = (
-  signerConfig: EphemeralConfig,
-  options: Required<Pick<SetupOptions, 'requireUnrevealed' | 'minBalanceMutez' | 'maxAttempts'>>
-) => {
-  const { v2FreshKeyUrl } = getKeygenEndpoints(signerConfig);
-  return JSON.stringify({
-    v2FreshKeyUrl,
-    requireUnrevealed: options.requireUnrevealed,
-    minBalanceMutez: options.minBalanceMutez,
-    maxAttempts: options.maxAttempts,
-  });
-};
-
-const requestFreshKeyCandidate = async (
-  signerConfig: EphemeralConfig,
-  options: Required<Pick<SetupOptions, 'requireUnrevealed' | 'minBalanceMutez' | 'maxAttempts'>>
-): Promise<FreshKeyCandidate> => {
-  const { v2FreshKeyUrl } = getKeygenEndpoints(signerConfig);
-  const requestBody: KeygenV2KeyRequest = {
-    require_unrevealed: options.requireUnrevealed,
-    key_prefixes: ['tz1'],
-    max_selection_attempts: options.maxAttempts,
-  };
-
-  if (options.minBalanceMutez > 0) {
-    requestBody.min_balance_mutez = options.minBalanceMutez;
-  }
-
-  const keyRequestStartedAt = Date.now();
-  const keyResponse = await sharedKeygenHttpClient.createRequest<KeygenV2FreshKeyResponse>(
-    {
-      url: v2FreshKeyUrl,
-      method: 'POST',
-      headers: signerConfig.requestHeaders,
-      timeout: keygenRequestTimeoutMs,
-    },
-    requestBody
-  );
-
-  return {
-    keyResponse,
-    keyRequestDurationMs: Date.now() - keyRequestStartedAt,
-  };
-};
-
-const getFreshKeyPool = (
-  signerConfig: EphemeralConfig,
-  options: Required<Pick<SetupOptions, 'requireUnrevealed' | 'minBalanceMutez' | 'maxAttempts'>>
-) => {
-  const poolId = getFreshKeyPoolId(signerConfig, options);
-  const existing = freshKeyPools.get(poolId);
-
-  if (existing) {
-    return existing;
-  }
-
-  const bufferSize = options.requireUnrevealed ? Math.min(freshKeyPrefetch, 1) : freshKeyPrefetch;
-
-  // Octez is not the bottleneck here, CI is. Keep a tiny per-constraint buffer
-  // so each "fresh" account is still consumed exactly once, but the next keygen
-  // request overlaps with the previous test instead of blocking the next setup.
-  const created = new AsyncPrefetchBuffer(
-    () => requestFreshKeyCandidate(signerConfig, options),
-    bufferSize
-  );
-  freshKeyPools.set(poolId, created);
-  return created;
-};
-
-// Named parameters for defaultConfig below
-interface DefaultConfiguration {
-  networkName: string;
-  protocol: Protocols;
-  defaultRpc: string;
-  knownContracts: KnownContracts;
-  signerConfig: EphemeralConfig | SecretKeyConfig;
 }
 
-// Creates a default Config for the given networkName, running
-// protocol, available on defaultRpc, a set of knownContracts and
-// signerConfig.
-const defaultConfig = ({
-  networkName,
-  protocol,
-  defaultRpc,
-  knownContracts,
-  signerConfig,
-}: DefaultConfiguration): Config => {
-  const networkType =
-    process.env['TEZOS_NETWORK_TYPE'] === 'sandbox' ? NetworkType.SANDBOX : NetworkType.TESTNET;
-  return {
-    networkName: networkName || '',
-    rpc: process.env[`TEZOS_RPC_${networkName}`] || defaultRpc,
-    pollingIntervalMilliseconds: process.env[`POLLING_INTERVAL_MILLISECONDS`] || undefined,
-    rpcCacheMilliseconds: process.env[`RPC_CACHE_MILLISECONDS`] || '1000',
-    knownBaker: process.env[`TEZOS_BAKER`] || 'tz1TnEtqDV9mZyts2pfMy6Jw1BTPs4LMjL8M', // ECAD 1 : Teztnets Baker
-    knownContract: process.env[`TEZOS_${networkName}_CONTRACT_ADDRESS`] || knownContracts.contract,
-    knownBigMapContract:
-      process.env[`TEZOS_${networkName}_BIGMAPCONTRACT_ADDRESS`] || knownContracts.bigMapContract,
-    knownTzip1216Contract:
-      process.env[`TEZOS_${networkName}_TZIP1216CONTRACT_ADDRESS`] ||
-      knownContracts.tzip12BigMapOffChainContract,
-    knownSaplingContract:
-      process.env[`TEZOS_${networkName}_SAPLINGCONTRACT_ADDRESS`] || knownContracts.saplingContract,
-    knownViewContract:
-      process.env[`TEZOS_${networkName}_ON_CHAIN_VIEW_CONTRACT`] ||
-      knownContracts.onChainViewContractAddress,
-    knownTicketContract:
-      process.env[`TEZOS_${networkName}_TICKET_CONTRACT`] || knownContracts.ticketContract,
-    protocol: protocol,
-    signerConfig: signerConfig,
-    networkType: networkType,
-  };
+const kathmandunetEphemeral = {
+  rpc: process.env['TEZOS_RPC_KATHMANDUNET'] || 'http://ecad-kathmandunet-archive.i.tez.ie:8732',
+  pollingIntervalMilliseconds: process.env['POLLING_INTERVAL_MILLISECONDS'] || undefined,
+  rpcCacheMilliseconds: process.env['RPC_CACHE_MILLISECONDS'] || '1000',
+  knownBaker: process.env['TEZOS_BAKER'] || 'tz1cjyja1TU6fiyiFav3mFAdnDsCReJ12hPD',
+  knownContract: process.env['TEZOS_KATHMANDUET_CONTRACT_ADDRESS'] || knownContractPtKathman,
+  knownBigMapContract: process.env['TEZOS_KATHMANDUET_BIGMAPCONTRACT_ADDRESS'] || knownBigMapContractPtKathman,
+  knownTzip1216Contract: process.env['TEZOS_KATHMANDUET_TZIP1216CONTRACT_ADDRESS'] || knownTzip12BigMapOffChainContractPtKathman,
+  knownSaplingContract: process.env['TEZOS_KATHMANDUET_SAPLINGCONTRACT_ADDRESS'] || knownSaplingContractPtKathman,
+  txRollupWithdrawContract: process.env['TEZOS_KATHMANDUET_TX_ROLLUP_WITHDRAW_CONTRACT'] || '',
+  txRollupDepositContract: process.env['TEZOS_KATHMANDUET_TX_ROLLUP_DEPOSIT_CONTRACT'] || '',
+  knownViewContract: process.env['TEZOS_KATHMANDUET_ON_CHAIN_VIEW_CONTRACT'] || knownOnChainViewContractAddressPtKathman,
+  txRollupAddress: process.env['TEZOS_KATHMANDUET_TXROLLUP_ADDRESS'] || txRollupAddressPtKathman,
+  protocol: Protocols.PtKathman,
+  signerConfig: {
+    type: SignerType.EPHEMERAL_KEY as SignerType.EPHEMERAL_KEY,
+    keyUrl: 'https://api.tez.ie/keys/kathmandunet',
+    requestHeaders: { Authorization: 'Bearer taquito-example' },
+  }
 };
 
-const shadownetEphemeral: Config = defaultConfig({
-  networkName: 'SHADOWNET',
-  // Shadownet shadows whichever proposal is currently under test, so this value
-  // goes stale on every migration. Tests that care about the running protocol
-  // (e.g. gas estimation) read it live from the RPC via resolveProtocol(); keep
-  // this roughly current for operation building.
-  protocol: Protocols.PsUshuai9,
-  defaultRpc: 'https://rpc.shadownet.teztnets.com',
-  knownContracts: knownContractsShadownet,
-  signerConfig: defaultEphemeralConfig('shadownet'),
-});
-
-const shadownetSecretKey: Config = {
-  ...shadownetEphemeral,
-  signerConfig: defaultSecretKey,
+const jakartanetEphemeral = {
+  rpc: process.env['TEZOS_RPC_JAKARTANET'] || 'https://jakartanet-archive.ecadinfra.com',
+  pollingIntervalMilliseconds: process.env['POLLING_INTERVAL_MILLISECONDS'] || undefined,
+  rpcCacheMilliseconds: process.env['RPC_CACHE_MILLISECONDS'] || '1000',
+  knownBaker: process.env['TEZOS_BAKER'] || 'tz1cjyja1TU6fiyiFav3mFAdnDsCReJ12hPD',
+  knownContract: process.env['TEZOS_JAKARTANET_CONTRACT_ADDRESS'] || knownContractPtJakart2,
+  knownBigMapContract: process.env['TEZOS_JAKARTANET_BIGMAPCONTRACT_ADDRESS'] || knownBigMapContractPtJakart2,
+  knownTzip1216Contract: process.env['TEZOS_JAKARTANET_TZIP1216CONTRACT_ADDRESS'] || knownTzip12BigMapOffChainContractPtJakart2,
+  knownSaplingContract: process.env['TEZOS_JAKARTANET_SAPLINGCONTRACT_ADDRESS'] || knownSaplingContractPtJakart2,
+  txRollupWithdrawContract: process.env['TEZOS_JAKARTANET_TX_ROLLUP_WITHDRAW_CONTRACT'] || '',
+  txRollupDepositContract: process.env['TEZOS_JAKARTANET_TX_ROLLUP_DEPOSIT_CONTRACT'] || '',
+  knownViewContract: process.env['TEZOS_JAKARTANET_ON_CHAIN_VIEW_CONTRACT'] || knownOnChainViewContractAddressPtJakart2,
+  txRollupAddress: process.env['TEZOS_JAKARTANET_TXROLLUP_ADDRESS'] || txRollupAddressPtJakart2,
+  protocol: Protocols.PtJakart2,
+  signerConfig: {
+    type: SignerType.EPHEMERAL_KEY as SignerType.EPHEMERAL_KEY,
+    keyUrl: 'https://api.tez.ie/keys/jakartanet',
+    requestHeaders: { Authorization: 'Bearer taquito-example' },
+  },
 };
 
-// --- Featurenet placeholder -------------------------------------------------
-// When protocol V lands on a *dedicated* teztnet (not yet shadowed into
-// shadownet), wire it up here:
-//   1. <name>Ephemeral + <name>SecretKey via defaultConfig({ protocol, defaultRpc, knownContracts, ... })
-//   2. known-contracts-<name>.ts (+ originate-known-contracts entry if needed)
-//   3. package.json scripts: test:<name>, test:<name>:shard, test:<name>-secret-key
-//   4. main.yml integration-tests matrix entry + keygen path
-//   5. Estimation baselines: add [Protocols.P…]: [...] maps in
-//      __tests__/contract/tz*-estimation-tests.spec.ts (fail-loud if missing)
-// Prefer resolveProtocol() over Config.protocol for gas/constants-sensitive
-// tests; Config.protocol is only a hint for operation building.
-// ----------------------------------------------------------------------------
-
-const weeklynetSecretKey: Config = defaultConfig({
-  networkName: 'WEEKLYNET',
+const mondaynetEphemeral = {
+  rpc: process.env['TEZOS_RPC_MONDAYNET'] || 'http://mondaynet.ecadinfra.com:8732',
+  pollingIntervalMilliseconds: process.env['POLLING_INTERVAL_MILLISECONDS'] || undefined,
+  rpcCacheMilliseconds: process.env['RPC_CACHE_MILLISECONDS'] || '1000',
+  knownBaker: 'tz1ck3EJwzFpbLVmXVuEn5Ptwzc6Aj14mHSH',
+  knownContract: process.env['TEZOS_MONDAYNET_CONTRACT_ADDRESS'] || knownContractProtoALph,
+  knownBigMapContract: process.env['TEZOS_MONDAYNET_BIGMAPCONTRACT_ADDRESS'] || knownBigMapContractProtoALph,
+  knownTzip1216Contract: process.env['TEZOS_MONDAYNET_TZIP1216CONTRACT_ADDRESS'] || knownTzip12BigMapOffChainContractProtoALph,
+  knownSaplingContract: process.env['TEZOS_MONDAYNET_SAPLINGCONTRACT_ADDRESS'] || knownSaplingContractProtoALph,
+  txRollupWithdrawContract: process.env['TX_ROLLUP_WITHDRAW_CONTRACT'] || '',
+  txRollupDepositContract: process.env['TX_ROLLUP_DEPOSIT_CONTRACT'] || '',
+  knownViewContract: process.env['TEZOS_MONDAYNET_ON_CHAIN_VIEW_CONTRACT'] || knownOnChainViewContractAddressProtoALph,
+  txRollupAddress: process.env['TEZOS_MONDAYNET_TXROLLUP_ADDRESS'] || txRollupAddressProtoALph,
   protocol: Protocols.ProtoALpha,
-  defaultRpc: 'https://rpc.weeklynet-2025-12-03.teztnets.com',
-  knownContracts: knownContractsWeeklynet,
-  signerConfig: defaultSecretKey,
-});
+  signerConfig: {
+    type: SignerType.EPHEMERAL_KEY as SignerType.EPHEMERAL_KEY,
+    keyUrl: 'http://key-gen-1.i.tez.ie:3010/mondaynet',
+    requestHeaders: { Authorization: 'Bearer taquito-example' },
+  },
+};
 
-const tezlinkshadownetSecretKey: Config = defaultConfig({
-  networkName: 'TEZLINKNET',
-  protocol: Protocols.PtSeouLou,
-  defaultRpc: 'https://rpc.shadownet.tezlink.nomadic-labs.com/',
-  knownContracts: knownContractsTezlinkshadownet,
+const kathmandunetSecretKey = {
+  rpc: process.env['TEZOS_RPC_KATHMANDUNET'] || 'http://ecad-kathmandunet-archive.i.tez.ie:8732',
+  pollingIntervalMilliseconds: process.env['POLLING_INTERVAL_MILLISECONDS'] || undefined,
+  rpcCacheMilliseconds: process.env['RPC_CACHE_MILLISECONDS'] || '1000',
+  knownBaker: process.env['TEZOS_BAKER'] || 'tz1cjyja1TU6fiyiFav3mFAdnDsCReJ12hPD',
+  knownContract: process.env['TEZOS_KATHMANDUET_CONTRACT_ADDRESS'] || knownContractPtKathman,
+  knownBigMapContract: process.env['TEZOS_KATHMANDUET_BIGMAPCONTRACT_ADDRESS'] || knownBigMapContractPtKathman,
+  knownTzip1216Contract: process.env['TEZOS_KATHMANDUET_TZIP1216CONTRACT_ADDRESS'] || knownTzip12BigMapOffChainContractPtKathman,
+  knownSaplingContract: process.env['TEZOS_KATHMANDUET_SAPLINGCONTRACT_ADDRESS'] || knownSaplingContractPtKathman,
+  txRollupWithdrawContract: process.env['TEZOS_KATHMANDUET_TX_ROLLUP_WITHDRAW_CONTRACT'] || '',
+  txRollupDepositContract: process.env['TEZOS_KATHMANDUET_TX_ROLLUP_DEPOSIT_CONTRACT'] || '',
+  knownViewContract: process.env['TEZOS_KATHMANDUET_ON_CHAIN_VIEW_CONTRACT'] || knownOnChainViewContractAddressPtKathman,
+  txRollupAddress: process.env['TEZOS_KATHMANDUET_TXROLLUP_ADDRESS'] || txRollupAddressPtKathman,
+  protocol: Protocols.PtKathman,
   signerConfig: defaultSecretKey,
-});
+};
+
+const jakartanetSecretKey = {
+  rpc: process.env['TEZOS_RPC_JAKARTANET'] || 'https://jakartanet-archive.ecadinfra.com',
+  pollingIntervalMilliseconds: process.env['POLLING_INTERVAL_MILLISECONDS'] || undefined,
+  rpcCacheMilliseconds: process.env['RPC_CACHE_MILLISECONDS'] || '1000',
+  knownBaker: process.env['TEZOS_BAKER'] || 'tz1cjyja1TU6fiyiFav3mFAdnDsCReJ12hPD',
+  knownContract: process.env['TEZOS_JAKARTANET_CONTRACT_ADDRESS'] || knownContractPtJakart2,
+  knownBigMapContract: process.env['TEZOS_JAKARTANET_BIGMAPCONTRACT_ADDRESS'] || knownBigMapContractPtJakart2,
+  knownTzip1216Contract: process.env['TEZOS_JAKARTANET_TZIP1216CONTRACT_ADDRESS'] || knownTzip12BigMapOffChainContractPtJakart2,
+  knownSaplingContract: process.env['TEZOS_JAKARTANET_SAPLINGCONTRACT_ADDRESS'] || knownSaplingContractPtJakart2,
+  txRollupWithdrawContract: process.env['TEZOS_JAKARTANET_TX_ROLLUP_WITHDRAW_CONTRACT'] || '',
+  txRollupDepositContract: process.env['TEZOS_JAKARTANET_TX_ROLLUP_DEPOSIT_CONTRACT'] || '',
+  knownViewContract: process.env['TEZOS_JAKARTANET_ON_CHAIN_VIEW_CONTRACT'] || knownOnChainViewContractAddressPtJakart2,
+  txRollupAddress: process.env['TEZOS_JAKARTANET_TXROLLUP_ADDRESS'] || txRollupAddressPtJakart2,
+  protocol: Protocols.PtJakart2,
+  signerConfig: defaultSecretKey
+};
+
+const mondaynetSecretKey = {
+  rpc: process.env['TEZOS_RPC_MONDAYNET'] || 'http://mondaynet.ecadinfra.com:8732',
+  pollingIntervalMilliseconds: process.env['POLLING_INTERVAL_MILLISECONDS'] || undefined,
+  rpcCacheMilliseconds: process.env['RPC_CACHE_MILLISECONDS'] || '1000',
+  knownBaker: process.env['TEZOS_MONDAYNET_BAKER'] || 'tz1ck3EJwzFpbLVmXVuEn5Ptwzc6Aj14mHSH',
+  knownContract: process.env['TEZOS_MONDAYNET_CONTRACT_ADDRESS'] || knownContractProtoALph,
+  knownBigMapContract: process.env['TEZOS_MONDAYNET_BIGMAPCONTRACT_ADDRESS'] || knownBigMapContractProtoALph,
+  knownTzip1216Contract: process.env['TEZOS_MONDAYNET_TZIP1216CONTRACT_ADDRESS'] || knownTzip12BigMapOffChainContractProtoALph,
+  knownSaplingContract: process.env['TEZOS_MONDAYNET_SAPLINGCONTRACT_ADDRESS'] || knownSaplingContractProtoALph,
+  txRollupWithdrawContract: process.env['TX_ROLLUP_WITHDRAW_CONTRACT'] || '',
+  txRollupDepositContract: process.env['TX_ROLLUP_DEPOSIT_CONTRACT'] || '',
+  knownViewContract: process.env['TEZOS_MONDAYNET_ON_CHAIN_VIEW_CONTRACT'] || knownOnChainViewContractAddressProtoALph,
+  txRollupAddress: process.env['TEZOS_MONDAYNET_TXROLLUP_ADDRESS'] || txRollupAddressProtoALph,
+  protocol: Protocols.ProtoALpha,
+  signerConfig: defaultSecretKey
+};
 
 const providers: Config[] = [];
 
 if (process.env['RUN_WITH_SECRET_KEY']) {
-  providers.push(shadownetSecretKey, weeklynetSecretKey, tezlinkshadownetSecretKey);
-} else if (process.env['RUN_SHADOWNET_WITH_SECRET_KEY']) {
-  providers.push(shadownetSecretKey);
-} else if (process.env['RUN_WEEKLYNET_WITH_SECRET_KEY']) {
-  providers.push(weeklynetSecretKey);
-} else if (process.env['RUN_TEZLINKSHADOWNET_WITH_SECRET_KEY']) {
-  providers.push(tezlinkshadownetSecretKey);
-} else if (process.env['SHADOWNET']) {
-  providers.push(shadownetEphemeral);
+  providers.push(jakartanetSecretKey, kathmandunetSecretKey);
+} else if (process.env['RUN_JAKARTANET_WITH_SECRET_KEY']) {
+  providers.push(jakartanetSecretKey);
+} else if (process.env['RUN_KATHMANDUNET_WITH_SECRET_KEY']) {
+  providers.push(kathmandunetSecretKey);
+} else if (process.env['RUN_MONDAYNET_WITH_SECRET_KEY']) {
+  providers.push(mondaynetSecretKey);
+} else if (process.env['JAKARTANET']) {
+  providers.push(jakartanetEphemeral);
+} else if (process.env['KATHMANDUNET']) {
+  providers.push(kathmandunetEphemeral);
+} else if (process.env['MONDAYNET']) {
+  providers.push(mondaynetEphemeral);
 } else {
-  // Default: shadownet only (matches CI). Explicit env vars above select other nets.
-  providers.push(shadownetEphemeral);
+  providers.push(jakartanetEphemeral, kathmandunetEphemeral);
 }
 
 const setupForger = (Tezos: TezosToolkit, forger: ForgerType): void => {
@@ -484,7 +212,7 @@ const setupForger = (Tezos: TezosToolkit, forger: ForgerType): void => {
     Tezos.setProvider({ forger: Tezos.getFactory(TaquitoLocalForger)() });
   } else if (forger === ForgerType.COMPOSITE) {
     const rpcForger = Tezos.getFactory(RpcForger)();
-    const localForger = Tezos.getFactory(TaquitoLocalForger)();
+    const localForger = Tezos.getFactory(TaquitoLocalForger)()
     const composite = new CompositeForger([rpcForger, localForger]);
     Tezos.setProvider({ forger: composite });
   } else if (forger === ForgerType.RPC) {
@@ -494,211 +222,67 @@ const setupForger = (Tezos: TezosToolkit, forger: ForgerType): void => {
 
 const setupSignerWithFreshKey = async (
   Tezos: TezosToolkit,
-  signerConfig: EphemeralConfig,
-  options: Required<
-    Pick<SetupOptions, 'requireUnrevealed' | 'minBalanceMutez' | 'maxAttempts' | 'retryDelayMs'>
-  >
+  { keyUrl, requestHeaders }: EphemeralConfig
 ) => {
-  const { v2FreshKeyUrl } = getKeygenEndpoints(signerConfig);
-  const reasons: string[] = [];
-  let state: SignerStateSnapshot | undefined;
-  const actualPrefetchBufferSize = options.requireUnrevealed
-    ? Math.min(freshKeyPrefetch, 1)
-    : freshKeyPrefetch;
-  const freshKeyPool = getFreshKeyPool(signerConfig, options);
-  for (let attempt = 1; attempt <= options.maxAttempts; attempt++) {
-    const {
-      value: { keyResponse, keyRequestDurationMs },
-      waitMs: keyAcquireWaitMs,
-      wasPrefetched,
-      readyLeadMs,
-    } = await freshKeyPool.take();
-
-    if (!keyResponse.secret_key) {
-      throw new Error(`Keygen V2 did not return secret_key from ${v2FreshKeyUrl}`);
-    }
-
-    const signer = new InMemorySigner(keyResponse.secret_key);
-    Tezos.setSignerProvider(signer);
-    const signerStateStartedAt = Date.now();
-    state = await readSignerState(Tezos, keyResponse.pkh);
-    const signerStateDurationMs = Date.now() - signerStateStartedAt;
-
-    const lowBalance =
-      options.minBalanceMutez > 0 &&
-      (state.balanceAsNumber === null || state.balanceAsNumber < options.minBalanceMutez);
-    const alreadyRevealed = options.requireUnrevealed && state.revealed;
-
-    if (!lowBalance && !alreadyRevealed) {
-      diagnosticsLog({
-        stage: 'fresh-key-selected',
-        keyUrl: v2FreshKeyUrl,
-        attempt,
-        maxAttempts: options.maxAttempts,
-        pkh: state.pkh,
-        revealed: state.revealed,
-        balanceMutez: state.balanceMutez,
-        minBalanceMutez: options.minBalanceMutez || null,
-        requireUnrevealed: options.requireUnrevealed,
-        keygenRequestDurationMs: keyRequestDurationMs,
-        keyAcquireWaitMs,
-        signerStateDurationMs: signerStateDurationMs,
-        wasPrefetched,
-        prefetchedReadyLeadMs: readyLeadMs,
-        prefetchBufferSize: actualPrefetchBufferSize,
-      });
-      if (state.balanceAsNumber !== null && state.balanceAsNumber < lowBalanceWarnMutez) {
-        console.warn(
-          `[keygen] key ${state.pkh} accepted with ${state.balanceMutez} mutez ` +
-            `(requested min: ${options.minBalanceMutez}, warn threshold: ${lowBalanceWarnMutez})`
-        );
-      }
-      await logSignerState(
-        Tezos,
-        { signerMode: 'fresh', keyUrl: v2FreshKeyUrl, pkhHint: state.pkh },
-        state
-      );
-      return;
-    }
-
-    const reason = [
-      lowBalance ? `balance_below_${options.minBalanceMutez}` : null,
-      alreadyRevealed ? 'already_revealed' : null,
-    ]
-      .filter(Boolean)
-      .join(',');
-    reasons.push(`attempt_${attempt}:${reason}`);
-
-    console.warn(
-      `[keygen] rejected key ${state.pkh} (attempt ${attempt}/${options.maxAttempts}): ${reason}, ` +
-        `balance: ${state.balanceMutez ?? 'unknown'} mutez`
-    );
-
-    diagnosticsLog({
-      stage: 'fresh-key-retry',
-      keyUrl: v2FreshKeyUrl,
-      attempt,
-      maxAttempts: options.maxAttempts,
-      pkh: state.pkh,
-      revealed: state.revealed,
-      balanceMutez: state.balanceMutez,
-      minBalanceMutez: options.minBalanceMutez || null,
-      requireUnrevealed: options.requireUnrevealed,
-      reason,
-      keygenRequestDurationMs: keyRequestDurationMs,
-      keyAcquireWaitMs,
-      signerStateDurationMs: signerStateDurationMs,
-      wasPrefetched,
-      prefetchedReadyLeadMs: readyLeadMs,
-      prefetchBufferSize: actualPrefetchBufferSize,
-    });
-
-    if (attempt < options.maxAttempts && options.retryDelayMs > 0) {
-      await sleep(options.retryDelayMs);
-    }
-  }
-
-  throw new Error(
-    `Unable to acquire a fresh key meeting constraints after ${options.maxAttempts} attempts ` +
-      `(min_balance: ${options.minBalanceMutez} mutez, ` +
-      `last_balance: ${state?.balanceMutez ?? 'unknown'} mutez, ` +
-      `retries: ${reasons.join('; ')})`
-  );
-};
-
-const setupSignerWithEphemeralKey = async (Tezos: TezosToolkit, signerConfig: EphemeralConfig) => {
-  const { v2EphemeralLeaseUrl, v1EphemeralSignerBaseUrl } = getKeygenEndpoints(signerConfig);
   const httpClient = new HttpBackend();
 
-  const { id, pkh } = await httpClient.createRequest<KeygenV2EphemeralResponse>(
-    {
-      url: v2EphemeralLeaseUrl,
+  try {
+    const key = await httpClient.createRequest<string>({
+      url: keyUrl,
       method: 'POST',
-      headers: signerConfig.requestHeaders,
-      timeout: keygenRequestTimeoutMs,
-    },
-    { key_prefixes: ['tz1'] }
-  );
+      headers: requestHeaders,
+      json: false,
+    });
+    const signer = new InMemorySigner(key!);
+    Tezos.setSignerProvider(signer);
+  } catch (e) {
+    console.log('An error occurs when trying to fetch a fresh key:', e);
+  }
+};
 
-  const signer = new RemoteSigner(pkh, `${v1EphemeralSignerBaseUrl}/${id}/`, {
-    headers: signerConfig.requestHeaders,
-  });
-  Tezos.setSignerProvider(signer);
-  await logSignerState(Tezos, {
-    signerMode: 'ephemeral',
-    keyUrl: v2EphemeralLeaseUrl,
-    pkhHint: pkh,
-  });
+const setupSignerWithEphemeralKey = async (
+  Tezos: TezosToolkit,
+  { keyUrl, requestHeaders }: EphemeralConfig
+) => {
+  const ephemeralUrl = `${keyUrl}/ephemeral`;
+  const httpClient = new HttpBackend();
+
+  try {
+    const { id, pkh } = await httpClient.createRequest({
+      url: ephemeralUrl,
+      method: 'POST',
+      headers: requestHeaders,
+    });
+
+    const signer = new RemoteSigner(pkh, `${ephemeralUrl}/${id}/`, { headers: requestHeaders });
+    Tezos.setSignerProvider(signer);
+  } catch (e) {
+    console.log('An error occurs when trying to fetch an ephemeral key:', e);
+  }
 };
 
 const setupWithSecretKey = async (Tezos: TezosToolkit, signerConfig: SecretKeyConfig) => {
   Tezos.setSignerProvider(new InMemorySigner(signerConfig.secret_key, signerConfig.password));
-  await logSignerState(Tezos, { signerMode: 'secret' });
 };
 
-const configurePollingInterval = (
-  Tezos: TezosToolkit,
-  pollingIntervalMilliseconds: string | undefined
-) => {
-  const streamConfig = pollingIntervalMilliseconds
-    ? { pollingIntervalMilliseconds: Number(pollingIntervalMilliseconds) }
-    : {};
-  Tezos.setStreamProvider(Tezos.getFactory(PollingSubscribeProvider)(streamConfig));
-};
+const configurePollingInterval = (Tezos: TezosToolkit, pollingIntervalMilliseconds: string | undefined) => {
+  if(pollingIntervalMilliseconds) {
+    Tezos.setStreamProvider(Tezos.getFactory(PollingSubscribeProvider)({ pollingIntervalMilliseconds: Number(pollingIntervalMilliseconds) }));
+  }
+}
 
 const configureRpcCache = (rpc: string, rpcCacheMilliseconds: string) => {
-  if (rpcCacheMilliseconds === '0') {
+  if(rpcCacheMilliseconds === '0') {
     return new TezosToolkit(rpc);
   } else {
     return new TezosToolkit(new RpcClientCache(new RpcClient(rpc), Number(rpcCacheMilliseconds)));
   }
-};
-
-export const clearRpcCache = (Tezos: TezosToolkit) => {
-  if (Tezos.rpc instanceof RpcClientCache) {
-    Tezos.rpc.deleteAllCachedData();
-  }
-};
-
-export const waitForRpcState = async <T>(
-  Tezos: TezosToolkit,
-  read: () => Promise<T>,
-  predicate: (value: T) => boolean,
-  options?: {
-    timeoutMs?: number;
-    intervalMs?: number;
-    description?: string;
-  }
-) => {
-  const timeoutMs = options?.timeoutMs ?? 15_000;
-  const intervalMs = options?.intervalMs ?? 500;
-  const description = options?.description ?? 'RPC state';
-  const deadline = Date.now() + timeoutMs;
-  let lastError: unknown;
-
-  while (Date.now() <= deadline) {
-    clearRpcCache(Tezos);
-    try {
-      const value = await read();
-      if (predicate(value)) {
-        return value;
-      }
-    } catch (error) {
-      lastError = error;
-    }
-
-    await sleep(intervalMs);
-  }
-
-  const details = lastError ? ` Last error: ${toErrorMessage(lastError)}` : '';
-  throw new Error(`Timed out waiting for ${description}.${details}`);
-};
+}
 
 export const CONFIGS = () => {
   return forgers.reduce((prev, forger: ForgerType) => {
     const configs = providers.map(
       ({
-        networkName,
         rpc,
         pollingIntervalMilliseconds,
         rpcCacheMilliseconds,
@@ -709,20 +293,20 @@ export const CONFIGS = () => {
         knownTzip1216Contract,
         knownSaplingContract,
         knownViewContract,
-        knownTicketContract,
+        txRollupAddress,
         signerConfig,
-        networkType,
+        txRollupDepositContract,
+        txRollupWithdrawContract,
       }) => {
         const Tezos = configureRpcCache(rpc, rpcCacheMilliseconds);
 
-        Tezos.setProvider({ config: { confirmationPollingTimeoutSecond: 320 }, protocol });
+        Tezos.setProvider({ config: { confirmationPollingTimeoutSecond: 300 } });
 
         setupForger(Tezos, forger);
 
         configurePollingInterval(Tezos, pollingIntervalMilliseconds);
 
         return {
-          networkName,
           rpc,
           rpcCacheMilliseconds,
           knownBaker,
@@ -733,84 +317,31 @@ export const CONFIGS = () => {
           knownTzip1216Contract,
           knownSaplingContract,
           knownViewContract,
-          knownTicketContract,
+          txRollupAddress,
           signerConfig,
-          networkType,
-          setup: async (options?: boolean | SetupOptions) => {
-            const setupOptions = normalizeSetupOptions(options);
-            const setupStartedAt = Date.now();
-
-            // Reset mutable runtime settings to a deterministic baseline so per-test overrides
-            // (e.g. custom stream polling intervals) do not leak across tests.
-            Tezos.setProvider({ config: { confirmationPollingTimeoutSecond: 320 }, protocol });
-            configurePollingInterval(Tezos, pollingIntervalMilliseconds);
-            clearRpcCache(Tezos);
-
-            diagnosticsLog({
-              stage: 'setup-start',
-              networkName,
-              rpc,
-              preferFreshKey: setupOptions.preferFreshKey,
-              requireUnrevealed: setupOptions.requireUnrevealed,
-              minBalanceMutez:
-                setupOptions.minBalanceMutez > 0 ? setupOptions.minBalanceMutez : null,
-              maxAttempts: setupOptions.maxAttempts,
-              retryDelayMs: setupOptions.retryDelayMs,
-              signerType:
-                signerConfig.type === SignerType.SECRET_KEY ? 'SECRET_KEY' : 'EPHEMERAL_KEY',
-              keygenRequestTimeoutMs,
-            });
-            try {
-              if (signerConfig.type === SignerType.SECRET_KEY) {
-                await setupWithSecretKey(Tezos, signerConfig);
-              } else if (signerConfig.type === SignerType.EPHEMERAL_KEY) {
-                if (setupOptions.preferFreshKey) {
-                  await setupSignerWithFreshKey(Tezos, signerConfig, {
-                    requireUnrevealed: setupOptions.requireUnrevealed,
-                    minBalanceMutez: setupOptions.minBalanceMutez,
-                    maxAttempts: setupOptions.maxAttempts,
-                    retryDelayMs: setupOptions.retryDelayMs,
-                  });
-                } else {
-                  await setupSignerWithEphemeralKey(Tezos, signerConfig);
-                }
+          txRollupDepositContract,
+          txRollupWithdrawContract,
+          setup: async (preferFreshKey: boolean = false) => {
+            if (signerConfig.type === SignerType.SECRET_KEY) {
+              setupWithSecretKey(Tezos, signerConfig);
+            } else if (signerConfig.type === SignerType.EPHEMERAL_KEY) {
+              if (preferFreshKey) {
+                await setupSignerWithFreshKey(Tezos, signerConfig);
+              } else {
+                await setupSignerWithEphemeralKey(Tezos, signerConfig);
               }
-            } catch (error) {
-              diagnosticsLog({
-                stage: 'setup-failed',
-                networkName,
-                rpc,
-                preferFreshKey: setupOptions.preferFreshKey,
-                elapsedMs: Date.now() - setupStartedAt,
-                error: toErrorMessage(error),
-              });
-              throw error;
             }
-            diagnosticsLog({
-              stage: 'setup-complete',
-              networkName,
-              rpc,
-              preferFreshKey: setupOptions.preferFreshKey,
-              elapsedMs: Date.now() - setupStartedAt,
-            });
           },
-          createAddress: async (prefix: PrefixV2 = PrefixV2.P256SecretKey) => {
+          createAddress: async () => {
             const tezos = configureRpcCache(rpc, rpcCacheMilliseconds);
-            tezos.setProvider({ protocol });
             setupForger(tezos, forger);
             configurePollingInterval(tezos, pollingIntervalMilliseconds);
 
             const keyBytes = Buffer.alloc(32);
             nodeCrypto.randomFillSync(keyBytes);
 
-            const key = b58Encode(new Uint8Array(keyBytes), prefix);
+            const key = b58cencode(new Uint8Array(keyBytes), prefix[Prefix.P2SK]);
             await importKey(tezos, key);
-            await logSignerState(tezos, {
-              signerMode: 'generated',
-              networkName,
-              rpc,
-            });
-            clearRpcCache(tezos);
 
             return tezos;
           },

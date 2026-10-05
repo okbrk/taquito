@@ -1,10 +1,9 @@
-import { Buffer } from 'buffer';
-import { b58Encode, PrefixV2 } from '@taquito/utils';
-import * as sapling from '../sapling-wasm';
-import { decryptKey } from './helpers';
+import { b58cencode, Prefix, prefix } from '@taquito/utils';
+import * as sapling from '@airgap/sapling-wasm';
+import { InMemorySpendingKey } from './in-memory-spending-key';
 
 /**
- * Holds the viewing key
+ * @description Holds the viewing key
  */
 export class InMemoryViewingKey {
   #fullViewingKey: Buffer;
@@ -13,7 +12,7 @@ export class InMemoryViewingKey {
   }
 
   /**
-   * Allows to instantiate the InMemoryViewingKey from an encrypted/unencrypted spending key
+   * @description Allows to instantiate the InMemoryViewingKey from an encrypted/unencrypted spending key
    *
    * @param spendingKey Base58Check-encoded spending key
    * @param password Optional password to decrypt the spending key
@@ -24,13 +23,12 @@ export class InMemoryViewingKey {
    *
    */
   static async fromSpendingKey(spendingKey: string, password?: string) {
-    const spendingKeyBuf = decryptKey(spendingKey, password);
-    const viewingKey = await sapling.getExtendedFullViewingKeyFromSpendingKey(spendingKeyBuf);
-    return new InMemoryViewingKey(viewingKey.toString('hex'));
+    const inMemorySpendingkey = new InMemorySpendingKey(spendingKey, password);
+    return inMemorySpendingkey.getSaplingViewingKeyProvider();
   }
 
   /**
-   * Retrieve the full viewing key
+   * @description Retrieve the full viewing key
    * @returns Buffer representing the full viewing key
    *
    */
@@ -39,7 +37,7 @@ export class InMemoryViewingKey {
   }
 
   /**
-   * Retrieve the outgoing viewing key
+   * @description Retrieve the outgoing viewing key
    * @returns Buffer representing the outgoing viewing key
    *
    */
@@ -48,7 +46,7 @@ export class InMemoryViewingKey {
   }
 
   /**
-   * Retrieve the incoming viewing key
+   * @description Retrieve the incoming viewing key
    * @returns Buffer representing the incoming viewing key
    *
    */
@@ -57,7 +55,7 @@ export class InMemoryViewingKey {
   }
 
   /**
-   * Retrieve a payment address
+   * @description Retrieve a payment address
    * @param addressIndex used to determine which diversifier should be used to derive the address, default is 0
    * @returns Base58Check-encoded address and its index
    *
@@ -68,7 +66,7 @@ export class InMemoryViewingKey {
       addressIndex
     );
     return {
-      address: b58Encode(raw, PrefixV2.SaplingAddress),
+      address: b58cencode(raw, prefix[Prefix.ZET1]),
       addressIndex: index.readInt32LE(),
     };
   }

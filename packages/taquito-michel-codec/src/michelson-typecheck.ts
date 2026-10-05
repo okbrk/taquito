@@ -61,13 +61,9 @@ export class MichelsonInstructionError extends MichelsonError<MichelsonCode> {
    * @param stackState Current stack state
    * @param message An error message
    */
-  constructor(
-    public readonly val: MichelsonCode,
-    public readonly stackState: MichelsonReturnType,
-    public readonly message: string
-  ) {
+  constructor(val: MichelsonCode, public stackState: MichelsonReturnType, message?: string) {
     super(val, message);
-    this.name = 'MichelsonInstructionError';
+    Object.setPrototypeOf(this, MichelsonInstructionError.prototype);
   }
 }
 
@@ -83,22 +79,22 @@ function typeArgs<T extends MichelsonType>(t: T): TypeArgs<T> {
 
 function assertScalarTypesEqual(a: MichelsonType, b: MichelsonType, field = false): void {
   if (typeID(a) !== typeID(b)) {
-    throw new MichelsonTypeError(a, `types mismatch: ${typeID(a)} != ${typeID(b)}`, undefined);
+    throw new MichelsonTypeError(a, undefined, `types mismatch: ${typeID(a)} != ${typeID(b)}`);
   }
 
   const ann = [unpackAnnotations(a), unpackAnnotations(b)];
   if (ann[0].t && ann[1].t && ann[0].t[0] !== ann[1].t[0]) {
     throw new MichelsonTypeError(
       a,
-      `${typeID(a)}: type names mismatch: ${ann[0].t[0]} != ${ann[1].t[0]}`,
-      undefined
+      undefined,
+      `${typeID(a)}: type names mismatch: ${ann[0].t[0]} != ${ann[1].t[0]}`
     );
   }
   if (field && ann[0].f && ann[1].f && ann[0].f[0] !== ann[1].f[0]) {
     throw new MichelsonTypeError(
       a,
-      `${typeID(a)}: field names mismatch: ${ann[0].f[0]} != ${ann[1].f}`,
-      undefined
+      undefined,
+      `${typeID(a)}: field names mismatch: ${ann[0].f[0]} != ${ann[1].f}`
     );
   }
 
@@ -136,9 +132,8 @@ function assertScalarTypesEqual(a: MichelsonType, b: MichelsonType, field = fals
       if (parseInt(a.args[0].int, 10) !== parseInt((b as typeof a).args[0].int, 10)) {
         throw new MichelsonTypeError(
           a,
-          `${typeID(a)}: type argument mismatch: ${a.args[0].int} != ${(b as typeof a).args[0].int
-          }`,
-          undefined
+          undefined,
+          `${typeID(a)}: type argument mismatch: ${a.args[0].int} != ${(b as typeof a).args[0].int}`
         );
       }
   }
@@ -146,7 +141,7 @@ function assertScalarTypesEqual(a: MichelsonType, b: MichelsonType, field = fals
 
 function assertStacksEqual<T1 extends MichelsonType[], T2 extends T1>(a: T1, b: T2): void {
   if (a.length !== b.length) {
-    throw new MichelsonTypeError(a, `stack length mismatch: ${a.length} != ${b.length}`, undefined);
+    throw new MichelsonTypeError(a, undefined, `stack length mismatch: ${a.length} != ${b.length}`);
   }
   for (let i = 0; i < a.length; i++) {
     assertScalarTypesEqual(a[i], b[i]);
@@ -159,8 +154,8 @@ export function assertTypeAnnotationsValid(t: MichelsonType, field = false): voi
     if ((ann.t?.length || 0) > 1) {
       throw new MichelsonTypeError(
         t,
-        `${t.prim}: at most one type annotation allowed: ${t.annots}`,
-        undefined
+        undefined,
+        `${t.prim}: at most one type annotation allowed: ${t.annots}`
       );
     }
 
@@ -168,16 +163,16 @@ export function assertTypeAnnotationsValid(t: MichelsonType, field = false): voi
       if ((ann.f?.length || 0) > 1) {
         throw new MichelsonTypeError(
           t,
-          `${t.prim}: at most one field annotation allowed: ${t.annots}`,
-          undefined
+          undefined,
+          `${t.prim}: at most one field annotation allowed: ${t.annots}`
         );
       }
     } else {
       if ((ann.f?.length || 0) > 0) {
         throw new MichelsonTypeError(
           t,
-          `${t.prim}: field annotations aren't allowed: ${t.annots}`,
-          undefined
+          undefined,
+          `${t.prim}: field annotations aren't allowed: ${t.annots}`
         );
       }
     }
@@ -301,8 +296,8 @@ function _compareMichelsonData(t: MichelsonType, a: MichelsonData, b: MichelsonD
   // Unlikely, types are expected to be verified before the function call
   throw new MichelsonTypeError(
     t,
-    `${typeID(t)}: not comparable values: ${JSON.stringify(a)}, ${JSON.stringify(b)}`,
-    undefined
+    undefined,
+    `${typeID(t)}: not comparable values: ${JSON.stringify(a)}, ${JSON.stringify(b)}`
   );
 }
 
@@ -329,7 +324,7 @@ function assertDataValidInternal(d: MichelsonData, t: MichelsonType, ctx: Contex
       assertDataValidInternal(dc.args[1], tc.args[1], ctx);
       return;
     }
-    throw new MichelsonTypeError(t, `pair expected: ${JSON.stringify(d)}`, d);
+    throw new MichelsonTypeError(t, d, `pair expected: ${JSON.stringify(d)}`);
   }
 
   switch (t.prim) {
@@ -338,20 +333,20 @@ function assertDataValidInternal(d: MichelsonData, t: MichelsonType, ctx: Contex
       if ('int' in d && isDecimal(d.int)) {
         return;
       }
-      throw new MichelsonTypeError(t, `integer value expected: ${JSON.stringify(d)}`, d);
+      throw new MichelsonTypeError(t, d, `integer value expected: ${JSON.stringify(d)}`);
 
     case 'nat':
     case 'mutez':
       if ('int' in d && isNatural(d.int)) {
         return;
       }
-      throw new MichelsonTypeError(t, `natural value expected: ${JSON.stringify(d)}`, d);
+      throw new MichelsonTypeError(t, d, `natural value expected: ${JSON.stringify(d)}`);
 
     case 'string':
       if ('string' in d) {
         return;
       }
-      throw new MichelsonTypeError(t, `string value expected: ${JSON.stringify(d)}`, d);
+      throw new MichelsonTypeError(t, d, `string value expected: ${JSON.stringify(d)}`);
 
     case 'bytes':
     case 'bls12_381_g1':
@@ -359,13 +354,13 @@ function assertDataValidInternal(d: MichelsonData, t: MichelsonType, ctx: Contex
       if ('bytes' in d && parseBytes(d.bytes) !== null) {
         return;
       }
-      throw new MichelsonTypeError(t, `bytes value expected: ${JSON.stringify(d)}`, d);
+      throw new MichelsonTypeError(t, d, `bytes value expected: ${JSON.stringify(d)}`);
 
     case 'bool':
       if ('prim' in d && (d.prim === 'True' || d.prim === 'False')) {
         return;
       }
-      throw new MichelsonTypeError(t, `boolean value expected: ${JSON.stringify(d)}`, d);
+      throw new MichelsonTypeError(t, d, `boolean value expected: ${JSON.stringify(d)}`);
 
     case 'key_hash':
       if (
@@ -386,13 +381,13 @@ function assertDataValidInternal(d: MichelsonData, t: MichelsonType, ctx: Contex
           // ignore message
         }
       }
-      throw new MichelsonTypeError(t, `key hash expected: ${JSON.stringify(d)}`, d);
+      throw new MichelsonTypeError(t, d, `key hash expected: ${JSON.stringify(d)}`);
 
     case 'timestamp':
       if (('string' in d || 'int' in d) && parseDate(d) !== null) {
         return;
       }
-      throw new MichelsonTypeError(t, `timestamp expected: ${JSON.stringify(d)}`, d);
+      throw new MichelsonTypeError(t, d, `timestamp expected: ${JSON.stringify(d)}`);
 
     case 'address':
       if ('string' in d) {
@@ -409,6 +404,7 @@ function assertDataValidInternal(d: MichelsonData, t: MichelsonType, ctx: Contex
             'SECP256K1PublicKeyHash',
             'P256PublicKeyHash',
             'ContractHash',
+            'TxRollupL2Address',
             'RollupAddress'
           ) !== null
         ) {
@@ -422,13 +418,13 @@ function assertDataValidInternal(d: MichelsonData, t: MichelsonType, ctx: Contex
           // ignore message
         }
       }
-      throw new MichelsonTypeError(t, `address expected: ${JSON.stringify(d)}`, d);
+      throw new MichelsonTypeError(t, d, `address expected: ${JSON.stringify(d)}`);
 
     case 'key':
       if (
         'string' in d &&
         checkDecodeTezosID(d.string, 'ED25519PublicKey', 'SECP256K1PublicKey', 'P256PublicKey') !==
-        null
+          null
       ) {
         return;
       } else if ('bytes' in d) {
@@ -439,13 +435,13 @@ function assertDataValidInternal(d: MichelsonData, t: MichelsonType, ctx: Contex
           // ignore message
         }
       }
-      throw new MichelsonTypeError(t, `public key expected: ${JSON.stringify(d)}`, d);
+      throw new MichelsonTypeError(t, d, `public key expected: ${JSON.stringify(d)}`);
 
     case 'unit':
       if ('prim' in d && d.prim === 'Unit') {
         return;
       }
-      throw new MichelsonTypeError(t, `unit value expected: ${JSON.stringify(d)}`, d);
+      throw new MichelsonTypeError(t, d, `unit value expected: ${JSON.stringify(d)}`);
 
     case 'signature':
       if (
@@ -461,7 +457,7 @@ function assertDataValidInternal(d: MichelsonData, t: MichelsonType, ctx: Contex
       ) {
         return;
       }
-      throw new MichelsonTypeError(t, `signature expected: ${JSON.stringify(d)}`, d);
+      throw new MichelsonTypeError(t, d, `signature expected: ${JSON.stringify(d)}`);
 
     case 'chain_id':
       if ('bytes' in d || 'string' in d) {
@@ -470,7 +466,7 @@ function assertDataValidInternal(d: MichelsonData, t: MichelsonType, ctx: Contex
           return;
         }
       }
-      throw new MichelsonTypeError(t, `chain id expected: ${JSON.stringify(d)}`, d);
+      throw new MichelsonTypeError(t, d, `chain id expected: ${JSON.stringify(d)}`);
 
     // Complex types
     case 'option':
@@ -482,7 +478,7 @@ function assertDataValidInternal(d: MichelsonData, t: MichelsonType, ctx: Contex
           return;
         }
       }
-      throw new MichelsonTypeError(t, `option expected: ${JSON.stringify(d)}`, d);
+      throw new MichelsonTypeError(t, d, `option expected: ${JSON.stringify(d)}`);
 
     case 'list':
     case 'set':
@@ -493,7 +489,7 @@ function assertDataValidInternal(d: MichelsonData, t: MichelsonType, ctx: Contex
         }
         return;
       }
-      throw new MichelsonTypeError(t, `${t.prim} expected: ${JSON.stringify(d)}`, d);
+      throw new MichelsonTypeError(t, d, `${t.prim} expected: ${JSON.stringify(d)}`);
 
     case 'or':
       if ('prim' in d) {
@@ -505,20 +501,21 @@ function assertDataValidInternal(d: MichelsonData, t: MichelsonType, ctx: Contex
           return;
         }
       }
-      throw new MichelsonTypeError(t, `union (or) expected: ${JSON.stringify(d)}`, d);
+      throw new MichelsonTypeError(t, d, `union (or) expected: ${JSON.stringify(d)}`);
+
     case 'lambda':
       if (isFunction(d)) {
         const ret = functionTypeInternal(d, [t.args[0]], ctx);
         if ('failed' in ret) {
-          throw new MichelsonTypeError(t, `function is failed with error type: ${ret.failed}`, d);
+          throw new MichelsonTypeError(t, d, `function is failed with error type: ${ret.failed}`);
         }
         if (ret.length !== 1) {
-          throw new MichelsonTypeError(t, 'function must return a value', d);
+          throw new MichelsonTypeError(t, d, 'function must return a value');
         }
         assertScalarTypesEqual(t.args[1], ret[0]);
         return;
       }
-      throw new MichelsonTypeError(t, `function expected: ${JSON.stringify(d)}`, d);
+      throw new MichelsonTypeError(t, d, `function expected: ${JSON.stringify(d)}`);
 
     case 'map':
     case 'big_map':
@@ -526,53 +523,43 @@ function assertDataValidInternal(d: MichelsonData, t: MichelsonType, ctx: Contex
         //let prev: MichelsonMapElt | undefined;
         for (const v of d) {
           if (!('prim' in v) || v.prim !== 'Elt') {
-            throw new MichelsonTypeError(t, `map elements expected: ${JSON.stringify(d)}`, d);
+            throw new MichelsonTypeError(t, d, `map elements expected: ${JSON.stringify(d)}`);
           }
           assertDataValidInternal(v.args[0], t.args[0], ctx);
           assertDataValidInternal(v.args[1], t.args[1], ctx);
         }
         return;
       }
-      throw new MichelsonTypeError(t, `${t.prim} expected: ${JSON.stringify(d)}`, d);
+      throw new MichelsonTypeError(t, d, `${t.prim} expected: ${JSON.stringify(d)}`);
 
     case 'bls12_381_fr':
       if (('int' in d && isDecimal(d.int)) || ('bytes' in d && parseBytes(d.bytes) !== null)) {
         return;
       }
-      throw new MichelsonTypeError(t, `BLS12-381 element expected: ${JSON.stringify(d)}`, d);
+      throw new MichelsonTypeError(t, d, `BLS12-381 element expected: ${JSON.stringify(d)}`);
 
     case 'sapling_state':
       if (Array.isArray(d)) {
         return;
       }
-      throw new MichelsonTypeError(t, `sapling state expected: ${JSON.stringify(d)}`, d);
+      throw new MichelsonTypeError(t, d, `sapling state expected: ${JSON.stringify(d)}`);
 
     case 'ticket':
-      if ('prim' in d && d.prim === 'Ticket') {
-        assertDataValidInternal(d.args[0], { prim: 'address' }, ctx);
-        assertTypesEqual(d.args[1], t.args[0]);
-        assertDataValidInternal(d.args[2], t.args[0], ctx);
-        assertDataValidInternal(d.args[3], { prim: 'nat' }, ctx);
-        return;
-      } else if (isPairData(d)) {
-        // backward compatibility
-        assertDataValidInternal(
-          d,
-          {
-            prim: 'pair',
-            args: [{ prim: 'address' }, t.args[0], { prim: 'nat' }],
-          },
-          ctx
-        );
-        return;
-      }
-      throw new MichelsonTypeError(t, `ticket expected: ${JSON.stringify(d)}`, d);
+      assertDataValidInternal(
+        d,
+        {
+          prim: 'pair',
+          args: [{ prim: 'address' }, t.args[0], { prim: 'nat' }],
+        },
+        ctx
+      );
+      return;
 
     default:
       throw new MichelsonTypeError(
         t,
-        `type ${typeID(t)} don't have Michelson literal representation`,
-        d
+        d,
+        `type ${typeID(t)} don't have Michelson literal representation`
       );
   }
 }
@@ -741,10 +728,10 @@ function functionTypeInternal(
     const ann =
       a.v !== undefined || a.t !== undefined || a.f !== undefined
         ? [
-          ...((a.v === null ? src.v : a.v) || []),
-          ...((a.t === null ? src.t : a.t) || []),
-          ...((a.f === null ? src.f : a.f) || []),
-        ]
+            ...((a.v === null ? src.v : a.v) || []),
+            ...((a.t === null ? src.t : a.t) || []),
+            ...((a.f === null ? src.f : a.f) || []),
+          ]
         : undefined;
 
     const { annots: _annots, ...rest } = t;
@@ -792,12 +779,12 @@ function functionTypeInternal(
             ? ['@' + fieldAnn.slice(1)]
             : undefined
           : insVarAnn === '@%%'
-            ? varAnn
-              ? ['@' + varAnn.slice(1) + '.' + (fieldAnn ? fieldAnn.slice(1) : defField)]
-              : fieldAnn
-                ? ['@' + fieldAnn.slice(1)]
-                : undefined
-            : [insVarAnn]
+          ? varAnn
+            ? ['@' + varAnn.slice(1) + '.' + (fieldAnn ? fieldAnn.slice(1) : defField)]
+            : fieldAnn
+            ? ['@' + fieldAnn.slice(1)]
+            : undefined
+          : [insVarAnn]
         : null,
     });
   }
@@ -1310,16 +1297,8 @@ function functionTypeInternal(
         return [annotateVar({ prim: 'option', args: [{ prim: 'nat' }] }), ...stack.slice(1)];
 
       case 'INT':
-        args(0, ['nat', 'bls12_381_fr', 'bytes']);
+        args(0, ['nat', 'bls12_381_fr']);
         return [annotateVar({ prim: 'int' }), ...stack.slice(1)];
-
-      case 'BYTES':
-        args(0, ['nat', 'int']);
-        return [annotateVar({ prim: 'bytes' }), ...stack.slice(1)];
-
-      case 'NAT':
-        args(0, ['bytes']);
-        return [annotateVar({ prim: 'nat' }), ...stack.slice(1)];
 
       case 'NEG': {
         const s = args(0, ['nat', 'int', 'bls12_381_g1', 'bls12_381_g2', 'bls12_381_fr'])[0];
@@ -1331,12 +1310,12 @@ function functionTypeInternal(
 
       case 'LSL':
       case 'LSR':
-        args(0, ['nat', 'bytes'], ['nat', 'bytes']);
+        args(0, ['nat'], ['nat']);
         return [annotateVar({ prim: 'nat' }), ...stack.slice(2)];
 
       case 'OR':
       case 'XOR': {
-        const s = args(0, ['nat', 'bytes', 'bool'], ['nat', 'bytes', 'bool']);
+        const s = args(0, ['nat', 'bool'], ['nat', 'bool']);
         if (s[0].prim !== s[1].prim) {
           throw new MichelsonInstructionError(
             instruction,
@@ -1348,7 +1327,7 @@ function functionTypeInternal(
       }
 
       case 'AND': {
-        const s = args(0, ['nat', 'bytes', 'bool', 'int'], ['nat', 'bytes', 'bool']);
+        const s = args(0, ['nat', 'bool', 'int'], ['nat', 'bool']);
         if ((s[0].prim !== 'int' || s[1].prim !== 'nat') && s[0].prim !== s[1].prim) {
           throw new MichelsonInstructionError(
             instruction,
@@ -1360,7 +1339,7 @@ function functionTypeInternal(
       }
 
       case 'NOT': {
-        const s = args(0, ['nat', 'bytes', 'bool', 'int'])[0];
+        const s = args(0, ['nat', 'bool', 'int'])[0];
         if (s.prim === 'bool') {
           return [annotateVar({ prim: 'bool' }), ...stack.slice(1)];
         }
@@ -1698,8 +1677,8 @@ function functionTypeInternal(
         return s.prim === 'list'
           ? [annotateVar({ prim: 'list', args: [body[0]] }), ...tail]
           : s.prim === 'map'
-            ? [annotateVar({ prim: 'map', args: [s.args[0], body[0]] }), ...tail]
-            : [annotateVar({ prim: 'option', args: [body[0]] }), ...tail];
+          ? [annotateVar({ prim: 'map', args: [s.args[0], body[0]] }), ...tail]
+          : [annotateVar({ prim: 'option', args: [body[0]] }), ...tail];
       }
 
       case 'ITER': {
@@ -1831,15 +1810,10 @@ function functionTypeInternal(
           ...stack,
         ];
 
-      case 'LAMBDA_REC':
       case 'LAMBDA': {
         assertTypeAnnotationsValid(instruction.args[0]);
         assertTypeAnnotationsValid(instruction.args[1]);
-        const s = [instruction.args[0]];
-        if (instruction.prim === 'LAMBDA_REC') {
-          s.push({ prim: 'lambda', args: [instruction.args[0], instruction.args[1]] });
-        }
-        const body = functionTypeInternal(instruction.args[2], s, {
+        const body = functionTypeInternal(instruction.args[2], [instruction.args[0]], {
           ...ctx,
           contract: undefined,
         });
@@ -1873,20 +1847,10 @@ function functionTypeInternal(
       case 'TICKET': {
         const s = args(0, null, ['nat'])[0];
         ensureComparableType(s);
-        if (ProtoInferiorTo(proto, Protocol.PtLimaPtL)) {
-          return [
-            annotate({ prim: 'ticket', args: [s] }, instructionAnn({ t: 1, v: 1 })),
-            ...stack.slice(2),
-          ];
-        } else {
-          return [
-            annotateVar({
-              prim: 'option',
-              args: [annotate({ prim: 'ticket', args: [s] }, instructionAnn({ t: 1, v: 1 }))],
-            }),
-            ...stack.slice(2),
-          ];
-        }
+        return [
+          annotate({ prim: 'ticket', args: [s] }, instructionAnn({ t: 1, v: 1 })),
+          ...stack.slice(2),
+        ];
       }
 
       case 'JOIN_TICKETS': {
@@ -1997,35 +1961,35 @@ function functionTypeInternal(
         }
         return ProtoInferiorTo(proto, Protocol.PtJakarta)
           ? [
-            annotateVar({
-              prim: 'option',
-              args: [
-                {
-                  prim: 'pair',
-                  args: [{ prim: 'int' }, annotate(s[1], { t: null })],
-                },
-              ],
-            }),
-            ...stack.slice(2),
-          ]
+              annotateVar({
+                prim: 'option',
+                args: [
+                  {
+                    prim: 'pair',
+                    args: [{ prim: 'int' }, annotate(s[1], { t: null })],
+                  },
+                ],
+              }),
+              ...stack.slice(2),
+            ]
           : [
-            annotateVar({
-              prim: 'option',
-              args: [
-                {
-                  prim: 'pair',
-                  args: [
-                    { prim: 'bytes' },
-                    {
-                      prim: 'pair',
-                      args: [{ prim: 'int' }, annotate(s[1], { t: null })],
-                    },
-                  ],
-                },
-              ],
-            }),
-            ...stack.slice(2),
-          ];
+              annotateVar({
+                prim: 'option',
+                args: [
+                  {
+                    prim: 'pair',
+                    args: [
+                      { prim: 'bytes' },
+                      {
+                        prim: 'pair',
+                        args: [{ prim: 'int' }, annotate(s[1], { t: null })],
+                      },
+                    ],
+                  },
+                ],
+              }),
+              ...stack.slice(2),
+            ];
       }
 
       case 'OPEN_CHEST':
@@ -2053,18 +2017,6 @@ function functionTypeInternal(
         }
         return [annotate({ prim: 'operation' }, ia), ...stack.slice(1)];
       }
-
-      case 'IS_IMPLICIT_ACCOUNT':
-        args(0, ['address']);
-        return [annotateVar({ prim: 'option', args: [{ prim: 'key_hash' }] }), ...stack.slice(1)];
-
-      case 'INDEX_ADDRESS':
-        args(0, ['address']);
-        return [annotateVar({ prim: 'nat' }), ...stack.slice(1)];
-
-      case 'GET_ADDRESS_INDEX':
-        args(0, ['address']);
-        return [annotateVar({ prim: 'option', args: [{ prim: 'nat' }] }), ...stack.slice(1)];
 
       default:
         throw new MichelsonError(

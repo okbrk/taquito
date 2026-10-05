@@ -1,0 +1,12 @@
+{
+  "lerna": "2.11.0",
+  "packages": [
+    "example",
+    "integration-tests",
+    "app/taquito-test-dapp",
+    "packages/*",
+    "packages/taquito-michel-codec/pack-test-tool",
+    "website"
+  ],
+  "version": "14.0.0"
+}

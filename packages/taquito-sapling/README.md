@@ -1,7 +1,7 @@
 # Taquito Sapling package
 
-_Documentation can be found [here](https://taquito.io/docs/next/sapling)_
-_TypeDoc style documentation is available on-line [here](https://taquito.io/typedoc/modules/_taquito_sapling.html)_
+_Documentation can be found [here](https://tezostaquito.io/docs/next/sapling)_  
+_TypeDoc style documentation is available on-line [here](https://tezostaquito.io/typedoc/modules/_taquito_sapling.html)_
 
 ## General Information
 
@@ -16,7 +16,7 @@ npm install @taquito/sapling
 ```
 ## Usage
 
-**Retrieve a balance in the Sapling shielded set**
+**Retrieve a balance in the Sapling shielded pool**
 
 The returned balance is in mutez.
 
@@ -24,7 +24,7 @@ The returned balance is in mutez.
 import { TezosToolkit, RpcReadAdapter } from '@taquito/taquito';
 import { SaplingToolkit, InMemorySpendingKey } from '@taquito/sapling';
 
-const tezos = new TezosToolkit('https://shadownet.tezos.ecadinfra.com/');
+const tezos = new TezosToolkit('https://jakartanet.ecadinfra.com/');
 
 const saplingContract = await tezos.contract.at('KT1UYwMR6Q6LZnwQEi77DSBrAjKT1tEJb245');
 
@@ -33,8 +33,8 @@ const inMemorySpendingKey = await InMemorySpendingKey.fromMnemonic('YOUR_MNEMONI
 const readProvider = new RpcReadAdapter(tezos.rpc);
 
 const saplingToolkit = new SaplingToolkit(
-    { saplingSigner: inMemorySpendingKey },
-    { contractAddress: saplingContract.address, memoSize: 8 },
+    { saplingSigner: inMemorySpendingKey }, 
+    { contractAddress: saplingContract.address, memoSize: 8 }, 
     readProvider
 )
 
@@ -50,7 +50,7 @@ A shielded transaction allows sending tokens from a Tezos account (tz1, tz2, tz3
 import { TezosToolkit, RpcReadAdapter } from '@taquito/taquito';
 import { SaplingToolkit, InMemorySpendingKey } from '@taquito/sapling';
 
-const tezos = new TezosToolkit('https://shadownet.tezos.ecadinfra.com/');
+const tezos = new TezosToolkit('https://jakartanet.ecadinfra.com/');
 // set up your signer on the TezosToolkit as usual
 const saplingContract = await tezos.contract.at('KT1UYwMR6Q6LZnwQEi77DSBrAjKT1tEJb245');
 
@@ -59,8 +59,8 @@ const inMemorySpendingKey = await InMemorySpendingKey.fromMnemonic('YOUR_MNEMONI
 const readProvider = new RpcReadAdapter(tezos.rpc);
 
 const saplingToolkit = new SaplingToolkit(
-    { saplingSigner: inMemorySpendingKey },
-    { contractAddress: saplingContract.address, memoSize: 8 },
+    { saplingSigner: inMemorySpendingKey }, 
+    { contractAddress: saplingContract.address, memoSize: 8 }, 
     readProvider
 )
 
@@ -77,12 +77,12 @@ const shieldedTx = await saplingToolkit.prepareShieldedTransaction([{
 }])
 
 // Inject the sapling transaction using the ContractAbstraction
-// The amount MUST be specified in the send method to transfer the 3 tez to the shielded set
-const op = await saplingContract.methodsObject.default([shieldedTx]).send({ amount: 3 });
+// The amount MUST be specified in the send method to transfer the 3 tez to the shielded pool
+const op = await saplingContract.methods.default([shieldedTx]).send({ amount: 3 });
 await op.confirmation();
 ```
 
-Refer to the website documentation for further examples and information: https://taquito.io/docs/next/sapling
+Refer to the website documentation for further examples and information: https://tezostaquito.io/docs/next/sapling
 
 ## Additional info
 

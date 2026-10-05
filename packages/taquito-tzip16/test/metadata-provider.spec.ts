@@ -1,6 +1,5 @@
-import { vi, type Mock } from 'vitest';
 import { Handler, MetadataProvider } from '../src/metadata-provider';
-import { InvalidContractMetadataError, InvalidUriError } from '../src/errors';
+import { InvalidMetadata, InvalidUri } from '../src/tzip16-errors';
 
 describe('Metadata provider test', () => {
   let metadataProvider: MetadataProvider;
@@ -8,24 +7,24 @@ describe('Metadata provider test', () => {
   const mockContractAbstraction: any = {};
   const mockContext: any = {};
   let mockHttpHandler: {
-    getMetadata: Mock;
+    getMetadata: jest.Mock<any, any>;
   };
   let mockTezosStorageHandler: {
-    getMetadata: Mock;
+    getMetadata: jest.Mock<any, any>;
   };
   let mockIpfsHttpHandler: {
-    getMetadata: Mock;
+    getMetadata: jest.Mock<any, any>;
   };
 
   beforeEach(() => {
     mockHttpHandler = {
-      getMetadata: vi.fn(),
+      getMetadata: jest.fn(),
     };
     mockTezosStorageHandler = {
-      getMetadata: vi.fn(),
+      getMetadata: jest.fn(),
     };
     mockIpfsHttpHandler = {
-      getMetadata: vi.fn(),
+      getMetadata: jest.fn(),
     };
     handlers = new Map<string, Handler>([
       ['http', mockHttpHandler],
@@ -36,9 +35,9 @@ describe('Metadata provider test', () => {
     metadataProvider = new MetadataProvider(handlers);
   });
 
-  it('Should succesfully fetch metadata on https', async () => {
+  it('Should succesfully fetch metadata on https', async (done) => {
     mockHttpHandler.getMetadata.mockResolvedValue(
-      `{"name":"test","description":"A metadata test","version":"0.1","license":"MIT","authors":["Taquito <https://taquito.io/>"],"homepage":"https://taquito.io/"}`
+      `{"name":"test","description":"A metadata test","version":"0.1","license":"MIT","authors":["Taquito <https://tezostaquito.io/>"],"homepage":"https://tezostaquito.io/"}`
     );
 
     const metadata = await metadataProvider.provideMetadata(
@@ -54,15 +53,16 @@ describe('Metadata provider test', () => {
         description: 'A metadata test',
         version: '0.1',
         license: 'MIT',
-        authors: ['Taquito <https://taquito.io/>'],
-        homepage: 'https://taquito.io/',
+        authors: ['Taquito <https://tezostaquito.io/>'],
+        homepage: 'https://tezostaquito.io/',
       },
       integrityCheckResult: undefined,
       sha256Hash: undefined,
     });
+    done();
   });
 
-  it('Should succesfully fetch metadata on http', async () => {
+  it('Should succesfully fetch metadata on http', async (done) => {
     mockHttpHandler.getMetadata.mockResolvedValue(`{"name":"test"}`);
 
     const metadata = await metadataProvider.provideMetadata(
@@ -77,11 +77,12 @@ describe('Metadata provider test', () => {
       integrityCheckResult: undefined,
       sha256Hash: undefined,
     });
+    done();
   });
 
-  it('Should succesfully fetch metadata for tezos-storage', async () => {
+  it('Should succesfully fetch metadata for tezos-storage', async (done) => {
     mockTezosStorageHandler.getMetadata.mockResolvedValue(
-      `{"name":"test","description":"A metadata test","version":"0.1","license":"MIT","authors":["Taquito <https://taquito.io/>"],"homepage":"https://taquito.io/"}`
+      `{"name":"test","description":"A metadata test","version":"0.1","license":"MIT","authors":["Taquito <https://tezostaquito.io/>"],"homepage":"https://tezostaquito.io/"}`
     );
 
     const metadata = await metadataProvider.provideMetadata(
@@ -97,17 +98,18 @@ describe('Metadata provider test', () => {
         description: 'A metadata test',
         version: '0.1',
         license: 'MIT',
-        authors: ['Taquito <https://taquito.io/>'],
-        homepage: 'https://taquito.io/',
+        authors: ['Taquito <https://tezostaquito.io/>'],
+        homepage: 'https://tezostaquito.io/',
       },
       integrityCheckResult: undefined,
       sha256Hash: undefined,
     });
+    done();
   });
 
-  it('Should succesfully fetch metadata for IPFS', async () => {
+  it('Should succesfully fetch metadata for IPFS', async (done) => {
     mockIpfsHttpHandler.getMetadata.mockResolvedValue(
-      `{"name":"test","description":"A metadata test","version":"0.1","license":"MIT","authors":["Taquito <https://taquito.io/>"],"homepage":"https://taquito.io/"}`
+      `{"name":"test","description":"A metadata test","version":"0.1","license":"MIT","authors":["Taquito <https://tezostaquito.io/>"],"homepage":"https://tezostaquito.io/"}`
     );
 
     const metadata = await metadataProvider.provideMetadata(
@@ -123,15 +125,16 @@ describe('Metadata provider test', () => {
         description: 'A metadata test',
         version: '0.1',
         license: 'MIT',
-        authors: ['Taquito <https://taquito.io/>'],
-        homepage: 'https://taquito.io/',
+        authors: ['Taquito <https://tezostaquito.io/>'],
+        homepage: 'https://tezostaquito.io/',
       },
       integrityCheckResult: undefined,
       sha256Hash: undefined,
     });
+    done();
   });
 
-  it('Should fail with InvalidUriError', async () => {
+  it('Should fail with InvalidUri', async (done) => {
     try {
       await metadataProvider.provideMetadata(
         mockContractAbstraction,
@@ -139,19 +142,21 @@ describe('Metadata provider test', () => {
         mockContext
       );
     } catch (ex) {
-      expect(ex).toBeInstanceOf(InvalidUriError);
+      expect(ex).toBeInstanceOf(InvalidUri);
     }
+    done();
   });
 
-  it('Should fail with InvalidContractMetadataError when metadata is not a JSON object', async () => {
+  it('Should fail with InvalidMetadata when metadata are not a JSON object', async (done) => {
     mockHttpHandler.getMetadata.mockResolvedValue(
       `"description": "Invalid metadata, not in JSON format"`
     );
     try {
       await metadataProvider.provideMetadata(mockContractAbstraction, 'https://test', mockContext);
     } catch (ex) {
-      expect(ex).toBeInstanceOf(InvalidContractMetadataError);
+      expect(ex).toBeInstanceOf(InvalidMetadata);
     }
+    done();
   });
 
   it('Should extract protocol info properly', () => {
@@ -214,11 +219,5 @@ describe('Metadata provider test', () => {
     });
 
     expect(metadataProvider['extractProtocolInfo']('hello/world')).toBeUndefined();
-  });
-
-  it('Should reject crafted invalid URIs without matching a protocol', () => {
-    const craftedUri = `sha256://0x${'sha256://0xa'.repeat(4000)}`;
-
-    expect(metadataProvider['extractProtocolInfo'](craftedUri)).toBeUndefined();
   });
 });

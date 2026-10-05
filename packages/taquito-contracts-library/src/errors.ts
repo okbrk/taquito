@@ -1,16 +1,19 @@
-import { ParameterValidationError } from '@taquito/core';
-import { ScriptedContracts } from '@taquito/rpc';
 /**
  *  @category Error
- *  Error that indicates invalid script format being useed or passed
+ *  @description Error that indicates an invalid address being used or passed
  */
-export class InvalidScriptFormatError extends ParameterValidationError {
-  constructor(
-    public readonly message: string,
-    public readonly script: ScriptedContracts,
-    public readonly address: string
-  ) {
-    super();
-    this.name = 'InvalidScriptFormatError';
+export class InvalidAddressError extends Error {
+  constructor(message: string) {
+    super(message);
+  }
+}
+
+/**
+ *  @category Error
+ *  @description Error that indicates invalid script format being useed or passed
+ */
+export class InvalidScriptFormatError extends Error {
+  constructor(message: string) {
+    super(message);
   }
 }

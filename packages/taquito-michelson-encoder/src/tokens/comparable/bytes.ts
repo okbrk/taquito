@@ -6,25 +6,17 @@ import {
   Token,
   SemanticEncoding,
 } from '../token';
-import { buf2hex, stripHexPrefix } from '@taquito/utils';
+import { stripHexPrefix } from '@taquito/utils';
 
-/**
- *  @category Error
- *  Error that indicates a failure happening when parsing encoding/executing Bytes
- */
 export class BytesValidationError extends TokenValidationError {
   name = 'BytesValidationError';
-  constructor(
-    public value: any,
-    public token: BytesToken,
-    message: string
-  ) {
+  constructor(public value: any, public token: BytesToken, message: string) {
     super(value, token, message);
   }
 }
 
 export class BytesToken extends ComparableToken {
-  static prim: 'bytes' = 'bytes' as const;
+  static prim: 'bytes' = 'bytes';
 
   constructor(
     protected val: { prim: string; args: any[]; annots: any[] },
@@ -41,35 +33,30 @@ export class BytesToken extends ComparableToken {
     };
   }
 
-  /**
-   * @throws {@link BytesValidationError}
-   */
-  private validate(val: any) {
+  private isValid(val: any): BytesValidationError | null {
     if (typeof val === 'string' && /^[0-9a-fA-F]*$/.test(val) && val.length % 2 === 0) {
-      return;
+      return null;
+    } else {
+      return new BytesValidationError(val, this, `Invalid bytes: ${val}`);
     }
-    throw new BytesValidationError(val, this, `Invalid bytes: ${val}`);
   }
 
   private convertUint8ArrayToHexString(val: any) {
-    return val.constructor === Uint8Array ? buf2hex(val) : val;
+    return val.constructor === Uint8Array ? Buffer.from(val).toString('hex') : val;
   }
 
-  /**
-   * @throws {@link BytesValidationError}
-   */
   public Encode(args: any[]): any {
     let val = args.pop();
     val = stripHexPrefix(this.convertUint8ArrayToHexString(val));
 
-    this.validate(val);
+    const err = this.isValid(val);
+    if (err) {
+      throw err;
+    }
 
     return { bytes: String(val).toString() };
   }
 
-  /**
-   * @throws {@link BytesValidationError}
-   */
   public EncodeObject(val: string | Uint8Array, semantic?: SemanticEncoding) {
     val = this.convertUint8ArrayToHexString(val);
 
@@ -77,7 +64,10 @@ export class BytesToken extends ComparableToken {
       val = stripHexPrefix(val);
     }
 
-    this.validate(val);
+    const err = this.isValid(val);
+    if (err) {
+      throw err;
+    }
 
     if (semantic && semantic[BytesToken.prim]) {
       return semantic[BytesToken.prim](val);
@@ -88,6 +78,14 @@ export class BytesToken extends ComparableToken {
 
   public Execute(val: any): string {
     return val.bytes;
+  }
+
+  /**
+   * @deprecated ExtractSchema has been deprecated in favor of generateSchema
+   *
+   */
+  public ExtractSchema() {
+    return BytesToken.prim;
   }
 
   generateSchema(): BaseTokenSchema {

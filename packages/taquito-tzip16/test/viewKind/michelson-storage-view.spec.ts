@@ -1,6 +1,5 @@
-import { vi } from 'vitest';
 import { RpcReadAdapter } from '@taquito/taquito';
-import { ForbiddenInstructionInViewCodeError, NoParameterExpectedError } from '../../src/errors';
+import { ForbiddenInstructionInViewCode, NoParameterExpectedError } from '../../src/tzip16-errors';
 import { MichelsonStorageView } from '../../src/viewKind/michelson-storage-view';
 
 describe('MichelsonStorageView test', () => {
@@ -10,16 +9,15 @@ describe('MichelsonStorageView test', () => {
 
   beforeEach(() => {
     mockRpcClient = {
-      getBlock: vi.fn(),
-      getBalance: vi.fn(),
-      getChainId: vi.fn(),
-      runCode: vi.fn(),
-      getStorage: vi.fn(),
-      getBlockHeader: vi.fn(),
+      getBlock: jest.fn(),
+      getBalance: jest.fn(),
+      getChainId: jest.fn(),
+      runCode: jest.fn(),
+      getStorage: jest.fn(),
+      getBlockHeader: jest.fn(),
     };
 
     mockContractAbstraction.address = 'KT1test';
-    mockContractAbstraction.readBlock = 'BLockHash200';
     mockContractAbstraction.script = {
       code: [
         { prim: 'parameter', args: [{ prim: 'unit' }] },
@@ -62,7 +60,7 @@ describe('MichelsonStorageView test', () => {
     mockReadProvider = new RpcReadAdapter(mockRpcClient as any);
   });
 
-  it('Should succesfully execute a view that get the balance of the contrat', async () => {
+  it('Should succesfully execute a view that get the balance of the contrat', async (done) => {
     mockRpcClient.runCode.mockResolvedValue({
       storage: { prim: 'Some', args: [{ int: '0' }] },
       operations: [],
@@ -82,12 +80,10 @@ describe('MichelsonStorageView test', () => {
     const result = await michelsonStorageView.executeView();
 
     expect(result.toString()).toEqual('0');
-    expect(mockRpcClient.getStorage).not.toHaveBeenCalled();
-    expect(mockRpcClient.getBalance).toHaveBeenCalledWith('KT1test', { block: 'BLockHash200' });
-    expect(mockRpcClient.getBlockHeader).toHaveBeenCalledWith({ block: 'BLockHash200' });
+    done();
   });
 
-  it('Should throw IllegalInstructionInViewCode when code of the view contains the instruction AMOUNT', async () => {
+  it('Should throw IllegalInstructionInViewCode when code of the view contains the instruction AMOUNT', async (done) => {
     const viewCode = [{ prim: 'AMOUNT', args: [], annots: [] }]; // code
     const michelsonStorageView = new MichelsonStorageView(
       'test',
@@ -100,17 +96,16 @@ describe('MichelsonStorageView test', () => {
 
     try {
       await michelsonStorageView.executeView();
-    } catch (e: unknown) {
-      expect(e).toBeInstanceOf(ForbiddenInstructionInViewCodeError);
-      if (e instanceof ForbiddenInstructionInViewCodeError) {
-        expect(e.message).toEqual(
-          'Error found in the code of the view. It contains a forbidden instruction: AMOUNT.'
-        );
-      }
+    } catch (e) {
+      expect(e).toBeInstanceOf(ForbiddenInstructionInViewCode);
+      expect(e.message).toEqual(
+        'Error found in the code of the view. It contains a forbidden instruction: AMOUNT.'
+      );
     }
+    done();
   });
 
-  it('Should throw ForbiddenInstructionInViewCodeError when code of the view contains the instruction CREATE_CONTRACT', async () => {
+  it('Should throw ForbiddenInstructionInViewCode when code of the view contains the instruction CREATE_CONTRACT', async (done) => {
     const viewCode = [
       { prim: 'CAR', args: [], annots: [] },
       { prim: 'CREATE_CONTRACT', args: [], annots: [] },
@@ -128,17 +123,16 @@ describe('MichelsonStorageView test', () => {
 
     try {
       await michelsonStorageView.executeView();
-    } catch (e: unknown) {
-      expect(e).toBeInstanceOf(ForbiddenInstructionInViewCodeError);
-      if (e instanceof ForbiddenInstructionInViewCodeError) {
-        expect(e.message).toEqual(
-          'Error found in the code of the view. It contains a forbidden instruction: CREATE_CONTRACT.'
-        );
-      }
+    } catch (e) {
+      expect(e).toBeInstanceOf(ForbiddenInstructionInViewCode);
+      expect(e.message).toEqual(
+        'Error found in the code of the view. It contains a forbidden instruction: CREATE_CONTRACT.'
+      );
     }
+    done();
   });
 
-  it('Should throw ForbiddenInstructionInViewCodeError when code of the view contains the instruction SENDER', async () => {
+  it('Should throw ForbiddenInstructionInViewCode when code of the view contains the instruction SENDER', async (done) => {
     const viewCode = [
       { prim: 'CAR', args: [], annots: [] },
       { prim: 'SENDER', args: [], annots: [] },
@@ -155,17 +149,16 @@ describe('MichelsonStorageView test', () => {
 
     try {
       await michelsonStorageView.executeView();
-    } catch (e: unknown) {
-      expect(e).toBeInstanceOf(ForbiddenInstructionInViewCodeError);
-      if (e instanceof ForbiddenInstructionInViewCodeError) {
-        expect(e.message).toEqual(
-          'Error found in the code of the view. It contains a forbidden instruction: SENDER.'
-        );
-      }
+    } catch (e) {
+      expect(e).toBeInstanceOf(ForbiddenInstructionInViewCode);
+      expect(e.message).toEqual(
+        'Error found in the code of the view. It contains a forbidden instruction: SENDER.'
+      );
     }
+    done();
   });
 
-  it('Should throw ForbiddenInstructionInViewCodeError when code of the view contains the instruction SET_DELEGATE', async () => {
+  it('Should throw ForbiddenInstructionInViewCode when code of the view contains the instruction SET_DELEGATE', async (done) => {
     const viewCode = [{ prim: 'SET_DELEGATE', args: [], annots: [] }]; // code
     const michelsonStorageView = new MichelsonStorageView(
       'test',
@@ -178,17 +171,16 @@ describe('MichelsonStorageView test', () => {
 
     try {
       await michelsonStorageView.executeView();
-    } catch (e: unknown) {
-      expect(e).toBeInstanceOf(ForbiddenInstructionInViewCodeError);
-      if (e instanceof ForbiddenInstructionInViewCodeError) {
-        expect(e.message).toEqual(
-          'Error found in the code of the view. It contains a forbidden instruction: SET_DELEGATE.'
-        );
-      }
+    } catch (e) {
+      expect(e).toBeInstanceOf(ForbiddenInstructionInViewCode);
+      expect(e.message).toEqual(
+        'Error found in the code of the view. It contains a forbidden instruction: SET_DELEGATE.'
+      );
     }
+    done();
   });
 
-  it('Should throw ForbiddenInstructionInViewCodeError when code of the view contains the instruction SOURCE', async () => {
+  it('Should throw ForbiddenInstructionInViewCode when code of the view contains the instruction SOURCE', async (done) => {
     const viewCode = [{ prim: 'SOURCE', args: [], annots: [] }]; // code
     const michelsonStorageView = new MichelsonStorageView(
       'test',
@@ -201,17 +193,16 @@ describe('MichelsonStorageView test', () => {
 
     try {
       await michelsonStorageView.executeView();
-    } catch (e: unknown) {
-      expect(e).toBeInstanceOf(ForbiddenInstructionInViewCodeError);
-      if (e instanceof ForbiddenInstructionInViewCodeError) {
-        expect(e.message).toEqual(
-          'Error found in the code of the view. It contains a forbidden instruction: SOURCE.'
-        );
-      }
+    } catch (e) {
+      expect(e).toBeInstanceOf(ForbiddenInstructionInViewCode);
+      expect(e.message).toEqual(
+        'Error found in the code of the view. It contains a forbidden instruction: SOURCE.'
+      );
     }
+    done();
   });
 
-  it('Should throw ForbiddenInstructionInViewCodeError when code of the view contains the instruction TRANSFER_TOKENS', async () => {
+  it('Should throw ForbiddenInstructionInViewCode when code of the view contains the instruction TRANSFER_TOKENS', async (done) => {
     const viewCode = [{ prim: 'TRANSFER_TOKENS', args: [], annots: [] }]; // code
     const michelsonStorageView = new MichelsonStorageView(
       'test',
@@ -224,17 +215,16 @@ describe('MichelsonStorageView test', () => {
 
     try {
       await michelsonStorageView.executeView();
-    } catch (e: unknown) {
-      expect(e).toBeInstanceOf(ForbiddenInstructionInViewCodeError);
-      if (e instanceof ForbiddenInstructionInViewCodeError) {
-        expect(e.message).toEqual(
-          'Error found in the code of the view. It contains a forbidden instruction: TRANSFER_TOKENS.'
-        );
-      }
+    } catch (e) {
+      expect(e).toBeInstanceOf(ForbiddenInstructionInViewCode);
+      expect(e.message).toEqual(
+        'Error found in the code of the view. It contains a forbidden instruction: TRANSFER_TOKENS.'
+      );
     }
+    done();
   });
 
-  it('Should throw ForbiddenInstructionInViewCodeError when code of the view contains a nested forbidden instruction', async () => {
+  it('Should throw ForbiddenInstructionInViewCode when code of the view contains a nested forbidden instruction', async (done) => {
     const viewCode = [
       { prim: 'test', args: [{ prim: 'test2', args: [{ prim: 'TRANSFER_TOKENS' }] }], annots: [] },
     ]; // code
@@ -249,17 +239,16 @@ describe('MichelsonStorageView test', () => {
 
     try {
       await michelsonStorageView.executeView();
-    } catch (e: unknown) {
-      expect(e).toBeInstanceOf(ForbiddenInstructionInViewCodeError);
-      if (e instanceof ForbiddenInstructionInViewCodeError) {
-        expect(e.message).toEqual(
-          'Error found in the code of the view. It contains a forbidden instruction: TRANSFER_TOKENS.'
-        );
-      }
+    } catch (e) {
+      expect(e).toBeInstanceOf(ForbiddenInstructionInViewCode);
+      expect(e.message).toEqual(
+        'Error found in the code of the view. It contains a forbidden instruction: TRANSFER_TOKENS.'
+      );
     }
+    done();
   });
 
-  it('Should throw ForbiddenInstructionInViewCodeError when code of the view contains the instruction SELF which is not followed by an instruction ADDRESS', async () => {
+  it('Should throw ForbiddenInstructionInViewCode when code of the view contains the instruction SELF which is not followed by an instruction ADDRESS', async (done) => {
     const viewCode = [
       { prim: 'SELF', args: [], annots: [] },
       { prim: 'CONTRACT', args: [], annots: [] },
@@ -276,17 +265,16 @@ describe('MichelsonStorageView test', () => {
 
     try {
       await michelsonStorageView.executeView();
-    } catch (e: unknown) {
-      expect(e).toBeInstanceOf(ForbiddenInstructionInViewCodeError);
-      if (e instanceof ForbiddenInstructionInViewCodeError) {
-        expect(e.message).toEqual(
-          'Error found in the code of the view. It contains a forbidden instruction: the instruction SELF should only be used before ADDRESS.'
-        );
-      }
+    } catch (e) {
+      expect(e).toBeInstanceOf(ForbiddenInstructionInViewCode);
+      expect(e.message).toEqual(
+        'Error found in the code of the view. It contains a forbidden instruction: the instruction SELF should only be used before ADDRESS.'
+      );
     }
+    done();
   });
 
-  it('Should throw ForbiddenInstructionInViewCodeError when code of the view contains the instruction SELF which is not followed by an instruction ADDRESS', async () => {
+  it('Should throw ForbiddenInstructionInViewCode when code of the view contains the instruction SELF which is not followed by an instruction ADDRESS', async (done) => {
     const viewCode = [{ prim: 'test', args: [{ prim: 'SELF' }, { prim: 'test2' }], annots: [] }]; // code
 
     const michelsonStorageView = new MichelsonStorageView(
@@ -300,17 +288,16 @@ describe('MichelsonStorageView test', () => {
 
     try {
       await michelsonStorageView.executeView();
-    } catch (e: unknown) {
-      expect(e).toBeInstanceOf(ForbiddenInstructionInViewCodeError);
-      if (e instanceof ForbiddenInstructionInViewCodeError) {
-        expect(e.message).toEqual(
-          'Error found in the code of the view. It contains a forbidden instruction: the instruction SELF should only be used before ADDRESS.'
-        );
-      }
+    } catch (e) {
+      expect(e).toBeInstanceOf(ForbiddenInstructionInViewCode);
+      expect(e.message).toEqual(
+        'Error found in the code of the view. It contains a forbidden instruction: the instruction SELF should only be used before ADDRESS.'
+      );
     }
+    done();
   });
 
-  it('Should be valid when code of the view contains the instruction SELF followed by an instruction ADDRESS', async () => {
+  it('Should be valid when code of the view contains the instruction SELF followed by an instruction ADDRESS', async (done) => {
     mockRpcClient.runCode.mockResolvedValue({
       storage: { prim: 'Some', args: [{ int: '0' }] },
       operations: [],
@@ -334,9 +321,10 @@ describe('MichelsonStorageView test', () => {
     const result = await michelsonStorageView.executeView();
 
     expect(result.toString()).toEqual('0');
+    done();
   });
 
-  it('Should adapt view code to context', async () => {
+  it('Should adapt view code to context', async (done) => {
     const viewCode = [
       { prim: 'CAR' },
       { prim: 'NOW', args: [], annots: [] },
@@ -377,9 +365,10 @@ describe('MichelsonStorageView test', () => {
       { prim: 'CAR', args: [], annots: [] },
       [{ prim: 'PUSH', args: [{ prim: 'string' }, { string: 'chainTest' }] }],
     ]);
+    done();
   });
 
-  it('Should adapt view code to context when instruction to replace is not at first level of the array, test 1', async () => {
+  it('Should adapt view code to context when instruction to replace is not at first level of the array, test 1', async (done) => {
     const viewCode = [
       { prim: 'test' },
       {
@@ -418,9 +407,10 @@ describe('MichelsonStorageView test', () => {
       },
       { prim: 'test4' },
     ]);
+    done();
   });
 
-  it('Should adapt view code to context when instruction to replace is not at first level of the array, test 1', async () => {
+  it('Should adapt view code to context when instruction to replace is not at first level of the array, test 1', async (done) => {
     const viewCode = [
       {
         prim: 'test',
@@ -471,9 +461,10 @@ describe('MichelsonStorageView test', () => {
       [{ prim: 'PUSH', args: [{ prim: 'string' }, { string: 'chainTest' }] }],
       { prim: 'test4' },
     ]);
+    done();
   });
 
-  it('Should format Unit arguments and Unit view parameter properly, test 1', async () => {
+  it('Should format Unit arguments and Unit view parameter properly, test 1', async (done) => {
     const michelsonStorageView = new MichelsonStorageView(
       'test',
       mockContractAbstraction,
@@ -486,9 +477,10 @@ describe('MichelsonStorageView test', () => {
     const { arg, viewParameterType } = michelsonStorageView['formatArgsAndParameter']([]);
     expect(arg).toEqual({ prim: 'Unit' });
     expect(viewParameterType).toEqual({ args: [], prim: 'unit', annots: [] });
+    done();
   });
 
-  it('Should format Unit arguments and Unit view parameter properly, test 2', async () => {
+  it('Should format Unit arguments and Unit view parameter properly, test 2', async (done) => {
     const michelsonStorageView = new MichelsonStorageView(
       'test',
       mockContractAbstraction,
@@ -501,9 +493,10 @@ describe('MichelsonStorageView test', () => {
     const { arg, viewParameterType } = michelsonStorageView['formatArgsAndParameter'](['Unit']);
     expect(arg).toEqual({ prim: 'Unit' });
     expect(viewParameterType).toEqual({ args: [], prim: 'unit', annots: [] });
+    done();
   });
 
-  it('Should format Unit arguments and Unit view parameter properly, test 2', async () => {
+  it('Should format Unit arguments and Unit view parameter properly, test 2', async (done) => {
     const michelsonStorageView = new MichelsonStorageView(
       'test',
       mockContractAbstraction,
@@ -517,9 +510,10 @@ describe('MichelsonStorageView test', () => {
     const { arg, viewParameterType } = michelsonStorageView['formatArgsAndParameter'](['Unit']);
     expect(arg).toEqual({ prim: 'Unit' });
     expect(viewParameterType).toEqual({ args: [], prim: 'unit', annots: [] });
+    done();
   });
 
-  it('Should format Unit arguments and Unit view parameter properly, test 2', async () => {
+  it('Should format Unit arguments and Unit view parameter properly, test 2', async (done) => {
     const michelsonStorageView = new MichelsonStorageView(
       'test',
       mockContractAbstraction,
@@ -533,9 +527,10 @@ describe('MichelsonStorageView test', () => {
     const { arg, viewParameterType } = michelsonStorageView['formatArgsAndParameter']([]);
     expect(arg).toEqual({ prim: 'Unit' });
     expect(viewParameterType).toEqual({ args: [], prim: 'unit', annots: [] });
+    done();
   });
 
-  it('Should throw NoParameterExpectedError, test 1', async () => {
+  it('Should throw NoParameterExpectedError, test 1', async (done) => {
     const michelsonStorageView = new MichelsonStorageView(
       'test',
       mockContractAbstraction,
@@ -551,9 +546,10 @@ describe('MichelsonStorageView test', () => {
     } catch (e) {
       expect(e).toBeInstanceOf(NoParameterExpectedError);
     }
+    done();
   });
 
-  it('Should throw NoParameterExpectedError, test2', async () => {
+  it('Should throw NoParameterExpectedError, test2', async (done) => {
     const michelsonStorageView = new MichelsonStorageView(
       'test',
       mockContractAbstraction,
@@ -568,5 +564,6 @@ describe('MichelsonStorageView test', () => {
     } catch (e) {
       expect(e).toBeInstanceOf(NoParameterExpectedError);
     }
+    done();
   });
 });

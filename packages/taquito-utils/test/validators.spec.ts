@@ -9,7 +9,6 @@ import {
   validateOperation,
   validateProtocol,
   validateBlock,
-  validateSmartRollupAddress,
 } from '../src/validators';
 
 describe('validateAddress', () => {
@@ -35,49 +34,8 @@ describe('validateAddress', () => {
     expect(validateAddress('tz3')).toEqual(ValidationResult.INVALID_CHECKSUM);
     expect(validateAddress('KT1')).toEqual(ValidationResult.INVALID_CHECKSUM);
     expect(validateAddress('tz4')).toEqual(ValidationResult.INVALID_CHECKSUM);
-    expect(validateAddress('test')).toEqual(ValidationResult.INVALID_CHECKSUM);
-    expect(validateAddress('')).toEqual(ValidationResult.INVALID_CHECKSUM);
-    expect(validateAddress('tz2TSvNTh2epDMhZHrw73nV9piBX7kLZ9K9mAAAAAAAAAA')).toEqual(
-      ValidationResult.INVALID_CHECKSUM
-    );
-
-    expect(validateAddress('sr166cywS6HJx9gmqMU28Vo284gPQaPcGmYW')).toEqual(ValidationResult.VALID);
-    expect(validateAddress('sr166cywS6HJx9gmqMU28Vo284gPQaPcGmY1')).toEqual(
-      ValidationResult.INVALID_CHECKSUM
-    );
-  });
-});
-
-describe('validateSmartRollupAddress', () => {
-  it('Validate smart rollup address properly', () => {
-    expect(validateSmartRollupAddress('tz1QZ6KY7d3BuZDT1d19dUxoQrtFPN2QJ3hn')).toEqual(
-      ValidationResult.PREFIX_NOT_ALLOWED
-    );
-    expect(validateSmartRollupAddress('KT1Fe71jyjrxFg9ZrYqtvaX7uQjcLo7svE4D')).toEqual(
-      ValidationResult.PREFIX_NOT_ALLOWED
-    );
-    expect(validateSmartRollupAddress('tz2TSvNTh2epDMhZHrw73nV9piBX7kLZ9K9m')).toEqual(
-      ValidationResult.PREFIX_NOT_ALLOWED
-    );
-    expect(validateSmartRollupAddress('tz3VEZ4k6a4Wx42iyev6i2aVAptTRLEAivNN')).toEqual(
-      ValidationResult.PREFIX_NOT_ALLOWED
-    );
-    expect(validateSmartRollupAddress('KT1Fe71jyjrxFg9ZrYqtvaX7uQjcLo7svE4D')).toEqual(
-      ValidationResult.PREFIX_NOT_ALLOWED
-    );
-    expect(validateSmartRollupAddress('tz4EECtMxAuJ9UDLaiMZH7G1GCFYUWsj8HZn')).toEqual(
-      ValidationResult.PREFIX_NOT_ALLOWED
-    );
-
-    expect(validateSmartRollupAddress('test')).toEqual(ValidationResult.INVALID_CHECKSUM);
-    expect(validateSmartRollupAddress('')).toEqual(ValidationResult.INVALID_CHECKSUM);
-
-    expect(validateSmartRollupAddress('sr166cywS6HJx9gmqMU28Vo284gPQaPcGmYW')).toEqual(
-      ValidationResult.VALID
-    );
-    expect(validateSmartRollupAddress('sr166cywS6HJx9gmqMU28Vo284gPQaPcGmY1')).toEqual(
-      ValidationResult.INVALID_CHECKSUM
-    );
+    expect(validateAddress('test')).toEqual(ValidationResult.NO_PREFIX_MATCHED);
+    expect(validateAddress('')).toEqual(ValidationResult.NO_PREFIX_MATCHED);
   });
 });
 
@@ -88,15 +46,14 @@ describe('validateChain', () => {
     // Invalid checksum
     expect(validateChain('NetXdQprcVkpaWm')).toEqual(ValidationResult.INVALID_CHECKSUM);
     expect(validateChain('KT1Fe71jyjrxFg9ZrYqtvaX7uQjcLo7sp')).toEqual(
-      ValidationResult.INVALID_CHECKSUM
+      ValidationResult.NO_PREFIX_MATCHED
     );
-    expect(validateChain('tz1')).toEqual(ValidationResult.INVALID_CHECKSUM);
-    expect(validateChain('tz2')).toEqual(ValidationResult.INVALID_CHECKSUM);
-    expect(validateChain('tz3')).toEqual(ValidationResult.INVALID_CHECKSUM);
-    expect(validateChain('KT1')).toEqual(ValidationResult.INVALID_CHECKSUM);
-    expect(validateChain('test')).toEqual(ValidationResult.INVALID_CHECKSUM);
-    expect(validateChain('')).toEqual(ValidationResult.INVALID_CHECKSUM);
-    expect(validateChain('KT1Fe71jyjrxFg9ZrYqtvaX7uQjcLo7svE4D')).toEqual(ValidationResult.PREFIX_NOT_ALLOWED);
+    expect(validateChain('tz1')).toEqual(ValidationResult.NO_PREFIX_MATCHED);
+    expect(validateChain('tz2')).toEqual(ValidationResult.NO_PREFIX_MATCHED);
+    expect(validateChain('tz3')).toEqual(ValidationResult.NO_PREFIX_MATCHED);
+    expect(validateChain('KT1')).toEqual(ValidationResult.NO_PREFIX_MATCHED);
+    expect(validateChain('test')).toEqual(ValidationResult.NO_PREFIX_MATCHED);
+    expect(validateChain('')).toEqual(ValidationResult.NO_PREFIX_MATCHED);
   });
 });
 
@@ -104,7 +61,7 @@ describe('validateKeyHash', () => {
   it('Validate key hash properly', () => {
     expect(validateKeyHash('tz1QZ6KY7d3BuZDT1d19dUxoQrtFPN2QJ3hn')).toEqual(ValidationResult.VALID);
     expect(validateKeyHash('KT1Fe71jyjrxFg9ZrYqtvaX7uQjcLo7svE4D')).toEqual(
-      ValidationResult.PREFIX_NOT_ALLOWED
+      ValidationResult.NO_PREFIX_MATCHED
     );
     expect(validateKeyHash('tz2TSvNTh2epDMhZHrw73nV9piBX7kLZ9K9m')).toEqual(ValidationResult.VALID);
     expect(validateKeyHash('tz3VEZ4k6a4Wx42iyev6i2aVAptTRLEAivNN')).toEqual(ValidationResult.VALID);
@@ -116,19 +73,19 @@ describe('validateContractAddress', () => {
     expect(validateContractAddress('KT1Fe71jyjrxFg9ZrYqtvaX7uQjcLo7svE4D')).toEqual(
       ValidationResult.VALID
     );
+    expect(validateContractAddress('txr1YNMEtkj5Vkqsbdmt7xaxBTMRZjzS96UAi')).toEqual(
+      ValidationResult.VALID
+    );
     expect(validateContractAddress('tz1QZ6KY7d3BuZDT1d19dUxoQrtFPN2QJ3hn')).toEqual(
-      ValidationResult.PREFIX_NOT_ALLOWED
+      ValidationResult.NO_PREFIX_MATCHED
     );
     expect(validateContractAddress('tz2TSvNTh2epDMhZHrw73nV9piBX7kLZ9K9m')).toEqual(
-      ValidationResult.PREFIX_NOT_ALLOWED
+      ValidationResult.NO_PREFIX_MATCHED
     );
     expect(validateContractAddress('tz3VEZ4k6a4Wx42iyev6i2aVAptTRLEAivNN')).toEqual(
-      ValidationResult.PREFIX_NOT_ALLOWED
+      ValidationResult.NO_PREFIX_MATCHED
     );
-    expect(
-      validateContractAddress('KT1Fe71jyjrxFg9ZrYqtvaX7uQjcLo7svE4Dasdasdasdasdadasd')
-    ).toEqual(ValidationResult.INVALID_CHECKSUM);
-    expect(validateContractAddress('KT1Fe71jyjrxFg9ZrYqtvaX7uQ')).toEqual(
+    expect(validateContractAddress('txr1YNMEtkj5Vkqsbdmt7xaxBTMRZjzS96UAu')).toEqual(
       ValidationResult.INVALID_CHECKSUM
     );
   });
@@ -137,16 +94,16 @@ describe('validateContractAddress', () => {
 describe('validatePublicKey', () => {
   it('Validate public key properly', () => {
     expect(validatePublicKey('tz1QZ6KY7d3BuZDT1d19dUxoQrtFPN2QJ3hn')).toEqual(
-      ValidationResult.PREFIX_NOT_ALLOWED
+      ValidationResult.NO_PREFIX_MATCHED
     );
     expect(validatePublicKey('KT1Fe71jyjrxFg9ZrYqtvaX7uQjcLo7svE4D')).toEqual(
-      ValidationResult.PREFIX_NOT_ALLOWED
+      ValidationResult.NO_PREFIX_MATCHED
     );
     expect(validatePublicKey('tz2TSvNTh2epDMhZHrw73nV9piBX7kLZ9K9m')).toEqual(
-      ValidationResult.PREFIX_NOT_ALLOWED
+      ValidationResult.NO_PREFIX_MATCHED
     );
     expect(validatePublicKey('tz3VEZ4k6a4Wx42iyev6i2aVAptTRLEAivNN')).toEqual(
-      ValidationResult.PREFIX_NOT_ALLOWED
+      ValidationResult.NO_PREFIX_MATCHED
     );
     expect(validatePublicKey('edpkvS5QFv7KRGfa3b87gg9DBpxSm3NpSwnjhUjNBQrRUUR66F7C9g')).toEqual(
       ValidationResult.VALID
@@ -186,25 +143,25 @@ describe('validateSignature', () => {
       ValidationResult.INVALID_CHECKSUM
     );
     expect(validateSignature('tz1QZ6KY7d3BuZDT1d19dUxoQrtFPN2QJ3hn')).toEqual(
-      ValidationResult.PREFIX_NOT_ALLOWED
+      ValidationResult.NO_PREFIX_MATCHED
     );
     expect(validateSignature('KT1Fe71jyjrxFg9ZrYqtvaX7uQjcLo7svE4D')).toEqual(
-      ValidationResult.PREFIX_NOT_ALLOWED
+      ValidationResult.NO_PREFIX_MATCHED
     );
     expect(validateSignature('tz2TSvNTh2epDMhZHrw73nV9piBX7kLZ9K9m')).toEqual(
-      ValidationResult.PREFIX_NOT_ALLOWED
+      ValidationResult.NO_PREFIX_MATCHED
     );
     expect(validateSignature('tz3VEZ4k6a4Wx42iyev6i2aVAptTRLEAivNN')).toEqual(
-      ValidationResult.PREFIX_NOT_ALLOWED
+      ValidationResult.NO_PREFIX_MATCHED
     );
     expect(validateSignature('edpkvS5QFv7KRGfa3b87gg9DBpxSm3NpSwnjhUjNBQrRUUR66F7C9g')).toEqual(
-      ValidationResult.PREFIX_NOT_ALLOWED
+      ValidationResult.NO_PREFIX_MATCHED
     );
     expect(validateSignature('sppk7aqSksZan1AGXuKtCz9UBLZZ77e3ZWGpFxR7ig1Z17GneEhSSbH')).toEqual(
-      ValidationResult.PREFIX_NOT_ALLOWED
+      ValidationResult.NO_PREFIX_MATCHED
     );
     expect(validateSignature('p2pk66tTYL5EvahKAXncbtbRPBkAnxo3CszzUho5wPCgWauBMyvybuB')).toEqual(
-      ValidationResult.PREFIX_NOT_ALLOWED
+      ValidationResult.NO_PREFIX_MATCHED
     );
   });
 });
@@ -232,10 +189,10 @@ describe('validateOperation', () => {
     );
 
     expect(validateOperation('sppk7aqSksZan1AGXuKtCz9UBLZZ77e3ZWGpFxR7ig1Z17GneEhSSbH')).toEqual(
-      ValidationResult.PREFIX_NOT_ALLOWED
+      ValidationResult.NO_PREFIX_MATCHED
     );
     expect(validateOperation('p2pk66tTYL5EvahKAXncbtbRPBkAnxo3CszzUho5wPCgWauBMyvybuB')).toEqual(
-      ValidationResult.PREFIX_NOT_ALLOWED
+      ValidationResult.NO_PREFIX_MATCHED
     );
   });
 });
@@ -284,10 +241,10 @@ describe('validateProtocol', () => {
     );
 
     expect(validateProtocol('ont3n75kMA2xeoTdxkGM23h5XhWgyP51WEznc4zCDtGNz1TWSz')).toEqual(
-      ValidationResult.INVALID_CHECKSUM
+      ValidationResult.NO_PREFIX_MATCHED
     );
     expect(validateProtocol('sppk7aqSksZan1AGXuKtCz9UBLZZ77e3ZWGpFxR7ig1Z17GneEhSSbH')).toEqual(
-      ValidationResult.PREFIX_NOT_ALLOWED
+      ValidationResult.NO_PREFIX_MATCHED
     );
   });
 });
@@ -309,10 +266,10 @@ describe('validateBlock', () => {
     );
 
     expect(validateBlock('bnt3n75kMA2xeoTdxkGM23h5XhWgyP51WEznc4zCDtGNz1TWSz')).toEqual(
-      ValidationResult.INVALID_CHECKSUM
+      ValidationResult.NO_PREFIX_MATCHED
     );
     expect(validateBlock('sppk7aqSksZan1AGXuKtCz9UBLZZ77e3ZWGpFxR7ig1Z17GneEhSSbH')).toEqual(
-      ValidationResult.PREFIX_NOT_ALLOWED
+      ValidationResult.NO_PREFIX_MATCHED
     );
   });
 });

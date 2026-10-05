@@ -1,5 +1,3 @@
-import { InvalidMessageError, TaquitoError } from '@taquito/core';
-
 const H = [
   0x6a09e667 | 0,
   0xbb67ae85 | 0,
@@ -80,12 +78,23 @@ const K = [
 
 /**
  *  @category Error
- *  Error that indicates a failure when decoding a base58 encoding
+ *  @description Error that indicates a failure when decoding a base58 encoding
  */
-export class Base58DecodingError extends TaquitoError {
-  constructor(public readonly message: string) {
-    super();
-    this.name = 'Base58DecodingError';
+export class Base58DecodingError extends Error {
+  public name = 'Base58DecodingError';
+  constructor(public message: string) {
+    super(message);
+  }
+}
+
+/**
+ *  @category Error
+ *  @description
+ */
+export class InvalidMessageError extends Error {
+  public name = 'InvalidMessageError';
+  constructor(public message: string) {
+    super(message);
   }
 }
 
@@ -96,7 +105,7 @@ function sha256(msg: number[] | Uint8Array): number[] {
   const pad = r === 0 ? 0 : 64 - r;
 
   if (msg.length > 268435455) {
-    throw new InvalidMessageError('', `: Invalid length ${msg.length} is too big -- SHA-256.`);
+    throw new InvalidMessageError(`SHA-256 -- message length is too big: ${msg.length}`);
   }
 
   const l = msg.length << 3;

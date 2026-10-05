@@ -3,10 +3,10 @@ import { Context, MichelCodecParser, Protocols, InvalidCodeParameter } from '../
 
 describe('MichelCodec parser', () => {
   const mockRpcClient = {
-    getProtocols: vi.fn(),
+    getProtocols: jest.fn(),
   };
   const mockGlobalConstantsProvider = {
-    getGlobalConstantByHash: vi.fn(),
+    getGlobalConstantByHash: jest.fn(),
   };
 
   mockRpcClient.getProtocols.mockResolvedValue({
@@ -18,15 +18,16 @@ describe('MichelCodec parser', () => {
   });
 
   describe('getNextProto', () => {
-    it('calls getProtocols from the rpc client', async () => {
+    it('calls getProtocols from the rpc client', async (done) => {
       const parser = new MichelCodecParser(new Context(mockRpcClient as any));
       const result = await parser['getNextProto']();
       expect(result).toStrictEqual(Protocols.PtEdo2Zk);
+      done();
     });
   });
 
   describe('prepareCodeOrigination', () => {
-    it('prepares code and init parameters when they are in Michelson', async () => {
+    it('prepares code and init parameters when they are in Michelson', async (done) => {
       const code = `parameter int; storage (pair int address); code { DUP; };`;
       const init = '(Pair 0 "tz1QZ6KY7d3BuZDT1d19dUxoQrtFPN2QJ3hn")';
       const originateParams: OriginateParams = { code, init };
@@ -52,9 +53,11 @@ describe('MichelCodec parser', () => {
           },
         })
       );
+
+      done();
     });
 
-    it('prepares code and init parameters when they are in JSON Michelson', async () => {
+    it('prepares code and init parameters when they are in JSON Michelson', async (done) => {
       const code = [
         { prim: 'parameter', args: [{ prim: 'int' }] },
         { prim: 'storage', args: [{ prim: 'pair', args: [{ prim: 'int' }, { prim: 'address' }] }] },
@@ -90,9 +93,11 @@ describe('MichelCodec parser', () => {
           },
         })
       );
+
+      done();
     });
 
-    it(`Ensures correct ordering for RPC: 'parameter', 'storage', 'code'`, async () => {
+    it(`Ensures correct ordering for RPC: 'parameter', 'storage', 'code'`, async (done) => {
       const code = [
         { prim: 'parameter', args: [{ prim: 'int' }] },
         {
@@ -128,9 +133,11 @@ describe('MichelCodec parser', () => {
           },
         })
       );
+
+      done();
     });
 
-    it('Throws InvalidMichelsonCode when code is an empty string', async () => {
+    it('Throws InvalidMichelsonCode when code is an empty string', async (done) => {
       const code = ``;
       const init = '(Pair 0 "tz1QZ6KY7d3BuZDT1d19dUxoQrtFPN2QJ3hn")';
       const originateParams: OriginateParams = { code, init };
@@ -140,11 +147,13 @@ describe('MichelCodec parser', () => {
         await parser.prepareCodeOrigination(originateParams);
       } catch (err: any) {
         expect(err).toBeInstanceOf(InvalidCodeParameter);
-        expect(err.message).toContain('Unable to parse');
+        expect(err.message).toBe('Invalid code parameter');
       }
+
+      done();
     });
 
-    it('expands global constants before encoding storage arguments', async () => {
+    it('expands global constants before encoding storage arguments', async (done) => {
       const context = new Context(mockRpcClient as any);
       mockGlobalConstantsProvider.getGlobalConstantByHash.mockResolvedValue({ prim: 'int' });
       context.globalConstantsProvider = mockGlobalConstantsProvider;
@@ -188,6 +197,8 @@ describe('MichelCodec parser', () => {
         ],
         init: { int: '10' },
       });
+
+      done();
     });
   });
 });

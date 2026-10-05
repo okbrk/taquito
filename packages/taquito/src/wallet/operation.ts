@@ -8,71 +8,23 @@ import {
   filter,
   first,
   map,
-  share,
+  shareReplay,
   switchMap,
   takeWhile,
   tap,
 } from 'rxjs/operators';
 import { Context } from '../context';
 import { Receipt, receiptFromOperation } from './receipt';
-import { validateOperation, ValidationResult } from '@taquito/utils';
+import { validateOperation, ValidationResult, InvalidOperationHashError } from '@taquito/utils';
 import { BlockIdentifier } from '../read-provider/interface';
-import { InvalidConfirmationCountError } from '../errors';
-import { ConfirmationUndefinedError, ObservableError } from './errors';
-import { InvalidOperationHashError } from '@taquito/core';
+import { InvalidConfirmationCountError, ConfirmationUndefinedError } from '../error';
 
 export type OperationStatus = 'pending' | 'unknown' | OperationResultStatusEnum;
 
 const MAX_BRANCH_ANCESTORS = 60;
-const env = typeof process !== 'undefined' ? process.env : undefined;
-const walletOpTraceEnabled = /^(1|true)$/i.test(env?.TAQUITO_OP_TRACE ?? '');
-const walletOpTraceVerbose = /^(1|true)$/i.test(env?.TAQUITO_OP_TRACE_VERBOSE ?? '');
-const parsedWalletOpTraceSlowMs = Number(env?.TAQUITO_OP_TRACE_SLOW_MS ?? '60000');
-const walletOpTraceSlowMs =
-  Number.isFinite(parsedWalletOpTraceSlowMs) && parsedWalletOpTraceSlowMs >= 0
-    ? parsedWalletOpTraceSlowMs
-    : 60000;
-
-const asRecord = (value: unknown): Record<string, unknown> | undefined =>
-  typeof value === 'object' && value !== null ? (value as Record<string, unknown>) : undefined;
-
-const getErrors = (value: unknown) => (Array.isArray(value) ? value : []);
-
-const summarizeWalletOperationResults = (results?: OperationContentsAndResult[]) =>
-  Array.isArray(results)
-    ? results.map((result) => {
-        const resultRecord = asRecord(result) ?? {};
-        const metadata = asRecord(resultRecord.metadata);
-        const operationResult = asRecord(metadata?.operation_result);
-        return {
-          kind: typeof resultRecord.kind === 'string' ? resultRecord.kind : 'unknown',
-          status: typeof operationResult?.status === 'string' ? operationResult.status : 'unknown',
-          errors: getErrors(operationResult?.errors),
-          consumed_milligas:
-            typeof operationResult?.consumed_milligas === 'string'
-              ? operationResult.consumed_milligas
-              : undefined,
-        };
-      })
-    : [];
-
-const toErrorMessage = (error: unknown) => {
-  if (error instanceof Error) {
-    return `${error.name}: ${error.message}`;
-  }
-  return String(error);
-};
-
-const traceWalletOperation = (payload: Record<string, unknown>) => {
-  if (!walletOpTraceEnabled) {
-    return;
-  }
-  // JSON logs are easier to aggregate when diagnosing flaky CI behavior.
-  console.log(`[taquito:wallet-op-trace] ${JSON.stringify(payload)}`);
-};
 
 /**
- * WalletOperation allows to monitor operation inclusion on chains and surface information related to the operation
+ * @description WalletOperation allows to monitor operation inclusion on chains and surface information related to the operation
  */
 export class WalletOperation {
   protected _operationResult = new ReplaySubject<OperationContentsAndResult[]>(1);
@@ -89,12 +41,7 @@ export class WalletOperation {
       );
     }),
     tap((newHead) => (this.lastHead = newHead)),
-    share({
-      connector: () => new ReplaySubject(1),
-      resetOnError: false,
-      resetOnComplete: false,
-      resetOnRefCountZero: true,
-    })
+    shareReplay({ bufferSize: 1, refCount: true })
   );
 
   // Observable that emit once operation is seen in a block
@@ -117,51 +64,26 @@ export class WalletOperation {
       return typeof x !== 'undefined';
     }),
     first(),
-    share({
-      connector: () => new ReplaySubject(1),
-      resetOnError: false,
-      resetOnComplete: false,
-      resetOnRefCountZero: true,
-    })
+    shareReplay({ bufferSize: 1, refCount: true })
   );
 
   async operationResults() {
     return this._operationResult.pipe(first()).toPromise();
   }
 
-  protected async getInclusionBlock() {
-    const inclusionBlock = await this._includedInBlock.pipe(first()).toPromise();
-    if (!inclusionBlock) {
-      throw new ObservableError('Inclusion block is undefined');
-    }
-
-    return inclusionBlock;
-  }
-
-  private async getOperationResultsIfIncluded() {
-    if (!this._included) {
-      return undefined;
-    }
-
-    return this.operationResults().catch(() => undefined);
-  }
   /**
-   * Receipt expose the total amount of tezos token burn and spent on fees
+   * @description Receipt expose the total amount of tezos token burn and spent on fees
    * The promise returned by receipt will resolve only once the transaction is included
    */
   async receipt(): Promise<Receipt> {
-    const results = await this.operationResults();
-    if (!results) {
-      throw new ObservableError('Unable to get operation results');
-    }
-    return receiptFromOperation(results);
+    return receiptFromOperation(await this.operationResults());
   }
 
   /**
    *
    * @param opHash Operation hash
+   * @param raw Raw operation that was injected
    * @param context Taquito context allowing access to rpc and signer
-   * @throws {InvalidOperationHashError}
    */
   constructor(
     public readonly opHash: string,
@@ -201,8 +123,9 @@ export class WalletOperation {
     }
 
     const tipBlockHeaderLevel = await this.context.readProvider.getBlockLevel(tipBlockIdentifier);
-    const inclusionBlock = await this.getInclusionBlock();
-    const levelDiff = (tipBlockHeaderLevel - inclusionBlock.header.level) as number;
+    const inclusionBlock = await this._includedInBlock.pipe(first()).toPromise();
+
+    const levelDiff = tipBlockHeaderLevel - inclusionBlock.header.level;
 
     // Block produced before the operation is included are assumed to be part of the current branch
     if (levelDiff <= 0) {
@@ -220,7 +143,7 @@ export class WalletOperation {
 
   confirmationObservable(confirmations?: number) {
     if (typeof confirmations !== 'undefined' && confirmations < 1) {
-      throw new InvalidConfirmationCountError(confirmations);
+      throw new InvalidConfirmationCountError('Confirmation count must be at least 1');
     }
 
     const { defaultConfirmationCount } = this.context.config;
@@ -228,7 +151,7 @@ export class WalletOperation {
     const conf = confirmations !== undefined ? confirmations : defaultConfirmationCount;
 
     if (conf === undefined) {
-      throw new ConfirmationUndefinedError();
+      throw new ConfirmationUndefinedError('Default confirmation count can not be undefined!');
     }
 
     return combineLatest([this._includedInBlock, this.newHead$]).pipe(
@@ -252,47 +175,7 @@ export class WalletOperation {
    *
    * @param confirmations [0] Number of confirmation to wait for
    */
-  async confirmation(confirmations?: number) {
-    const startedAt = Date.now();
-    const expectedConfirmation = confirmations ?? this.context.config.defaultConfirmationCount;
-
-    try {
-      const confirmationResult = await this.confirmationObservable(confirmations).toPromise();
-      const operationResults = await this.getOperationResultsIfIncluded();
-      const summary = summarizeWalletOperationResults(operationResults);
-      const nonAppliedStatuses = summary
-        .filter((result) => result.status !== 'applied')
-        .map((result) => result.status);
-      const elapsedMs = Date.now() - startedAt;
-
-      if (
-        walletOpTraceVerbose ||
-        elapsedMs >= walletOpTraceSlowMs ||
-        nonAppliedStatuses.length > 0
-      ) {
-        traceWalletOperation({
-          stage: 'confirmation-complete',
-          opHash: this.opHash,
-          elapsedMs,
-          expectedConfirmation,
-          currentConfirmation: confirmationResult?.currentConfirmation,
-          completed: confirmationResult?.completed,
-          statuses: summary.map((result) => result.status),
-          results: summary,
-        });
-      }
-      return confirmationResult;
-    } catch (error: unknown) {
-      const operationResults = await this.getOperationResultsIfIncluded();
-      traceWalletOperation({
-        stage: 'confirmation-error',
-        opHash: this.opHash,
-        elapsedMs: Date.now() - startedAt,
-        expectedConfirmation,
-        error: toErrorMessage(error),
-        results: summarizeWalletOperationResults(operationResults),
-      });
-      throw error;
-    }
+  confirmation(confirmations?: number) {
+    return this.confirmationObservable(confirmations).toPromise();
   }
 }

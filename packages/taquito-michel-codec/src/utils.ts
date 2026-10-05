@@ -6,8 +6,7 @@ import {
   MichelsonType,
   MichelsonTypePair,
 } from './michelson-types';
-import { HexParseError, LongIntegerError, TezosIdEncodeError } from './errors';
-import { TaquitoError } from '@taquito/core';
+import { HexParseError, LongIntegerError, TezosIdEncodeError } from './error';
 
 export type Tuple<N extends number, T> = N extends 1
   ? [T]
@@ -38,19 +37,17 @@ export type Nullable<T> = { [P in keyof T]: T[P] | null };
 
 /**
  *  @category Error
- *  Error that indicates a Michelson failure occurring
+ *  @description Error that indicates a Michelson failure occurring
  */
-export class MichelsonError<T extends Expr = Expr> extends TaquitoError {
+export class MichelsonError<T extends Expr = Expr> extends Error {
   /**
    * @param val Value of a AST node caused the error
+   * @param path Path to a node caused the error
    * @param message An error message
    */
-  constructor(
-    public readonly val: T,
-    public readonly message: string
-  ) {
-    super();
-    this.name = 'MichelsonError';
+  constructor(public val: T, message?: string) {
+    super(message);
+    Object.setPrototypeOf(this, MichelsonError.prototype);
   }
 }
 
@@ -66,16 +63,12 @@ export class MichelsonTypeError extends MichelsonError<MichelsonType | Michelson
    * @param data Value of a data node caused the error
    * @param message An error message
    */
-  constructor(
-    public readonly val: MichelsonType | MichelsonType[],
-    public readonly message: string,
-    data?: Expr
-  ) {
+  constructor(val: MichelsonType | MichelsonType[], data?: Expr, message?: string) {
     super(val, message);
-    this.name = 'MichelsonTypeError';
     if (data !== undefined) {
       this.data = data;
     }
+    Object.setPrototypeOf(this, MichelsonTypeError.prototype);
   }
 }
 
@@ -104,7 +97,7 @@ export class LongInteger {
           this.neg = true;
         } else {
           if (c < 0x30 || c > 0x39) {
-            throw new LongIntegerError(`unexpected character in integer constant "${arg[i]}"`);
+            throw new LongIntegerError(`unexpected character in integer constant: ${arg[i]}`);
           }
           this.append(c - 0x30);
         }
@@ -276,7 +269,8 @@ export type TezosIDType =
   | 'P256Signature'
   | 'GenericSignature'
   | 'ChainID'
-  | 'RollupAddress';
+  | 'RollupAddress'
+  | 'TxRollupL2Address';
 
 export type TezosIDPrefix = [number, number[]]; // payload length, prefix
 
@@ -310,6 +304,7 @@ export const tezosPrefix: Record<TezosIDType, TezosIDPrefix> = {
   GenericSignature: [64, [4, 130, 43]], // sig(96)
   ChainID: [4, [87, 82, 0]],
   RollupAddress: [20, [1, 128, 120, 31]],
+  TxRollupL2Address: [20, [6, 161, 166]],
 };
 
 export function checkDecodeTezosID<T extends TezosIDType[]>(

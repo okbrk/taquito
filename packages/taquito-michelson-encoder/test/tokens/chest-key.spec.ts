@@ -56,11 +56,8 @@ describe('ChestKey token', () => {
 
             try {
                 token.Encode(['test']);
-            } catch (ex: unknown) {
-                expect(ex).toBeInstanceOf(ChestKeyValidationError);
-                if (ex instanceof ChestKeyValidationError) {
-                    expect(ex.name).toEqual('ChestKeyValidationError');
-                }
+            } catch (ex) {
+                expect(ex.name).toEqual('ChestKeyValidationError');
             }
         });
     });
@@ -80,6 +77,8 @@ describe('ChestKey token', () => {
 
     describe('ExtractSchema', () => {
         it('Should generate the schema properly.', () => {
+            expect(token.ExtractSchema()).toEqual('chest_key');
+
             expect(token.generateSchema()).toEqual({
                 __michelsonType: 'chest_key',
                 schema: 'chest_key'

@@ -1,5 +1,4 @@
-import { InvalidHexStringError } from '@taquito/core';
-
+import { InvalidHexStringError } from './error';
 export class Uint8ArrayConsumer {
   static fromHexString(hex: string) {
     const lowHex = hex.toLowerCase();
@@ -27,9 +26,5 @@ export class Uint8ArrayConsumer {
 
   public length() {
     return this.arr.length - this.offset;
-  }
-
-  public slice(start: number, end?: number) {
-    return new Uint8ArrayConsumer(this.arr.slice(start, end));
   }
 }

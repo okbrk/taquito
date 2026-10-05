@@ -12,6 +12,8 @@ import { MapToken } from './map';
 
 import { BoolToken } from './comparable/bool';
 
+import { TxRollupL2AddressToken } from './comparable/tx_rollup_l2_address';
+
 import { OrToken } from './or';
 
 import { ContractToken } from './contract';
@@ -31,7 +33,6 @@ import { OperationToken } from './operation';
 import { SetToken } from './set';
 import { ChainIDToken } from './chain-id';
 import { TicketToken } from './ticket';
-import { TicketDeprecatedToken } from './ticket-deprecated';
 import { NeverToken } from './never';
 import { SaplingStateToken } from './sapling-state';
 import { SaplingTransactionToken } from './sapling-transaction';
@@ -49,6 +50,7 @@ export const tokens = [
   StringToken,
   BigMapToken,
   AddressToken,
+  TxRollupL2AddressToken,
   MapToken,
   BoolToken,
   OrToken,
@@ -68,7 +70,6 @@ export const tokens = [
   SetToken,
   ChainIDToken,
   TicketToken,
-  TicketDeprecatedToken,
   NeverToken,
   SaplingStateToken,
   SaplingTransactionToken,

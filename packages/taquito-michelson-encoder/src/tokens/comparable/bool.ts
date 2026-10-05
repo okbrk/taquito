@@ -2,7 +2,7 @@ import { BaseTokenSchema } from '../../schema/types';
 import { Token, TokenFactory, ComparableToken, SemanticEncoding } from '../token';
 
 export class BoolToken extends ComparableToken {
-  static prim: 'bool' = 'bool' as const;
+  static prim: 'bool' = 'bool';
 
   constructor(
     protected val: { prim: string; args: any[]; annots: any[] },
@@ -26,6 +26,14 @@ export class BoolToken extends ComparableToken {
       return semantic[BoolToken.prim](val);
     }
     return { prim: val ? 'True' : 'False' };
+  }
+
+  /**
+   * @deprecated ExtractSchema has been deprecated in favor of generateSchema
+   *
+   */
+  public ExtractSchema() {
+    return BoolToken.prim;
   }
 
   generateSchema(): BaseTokenSchema {

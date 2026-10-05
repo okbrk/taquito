@@ -5,7 +5,7 @@ import {
 } from '../data/sample4';
 import { Schema } from '../src/schema/storage';
 import { MichelsonMap } from '../src/michelson-map';
-import { normalizeMichelsonValue } from './utils';
+import { expectMichelsonMap } from './utils';
 
 describe('Schema test', () => {
   it('Should encode key properly', () => {
@@ -23,8 +23,8 @@ describe('Schema test', () => {
   it('Should parse storage properly', () => {
     const schema = new Schema(storage4);
     const storage = schema.Execute(rpcContractResponse4.script.storage);
-    expect(normalizeMichelsonValue(storage)).toEqual({
-      '0': {},
+    expect(storage).toEqual({
+      '0': expectMichelsonMap(),
       '1': 'tz1W8qq2VPJcbXkAMxG8zwXCbtwbDPMfTRZd',
     });
   });

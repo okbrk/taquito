@@ -8,10 +8,6 @@ import {
 import { validateSignature, ValidationResult } from '@taquito/utils';
 import { BaseTokenSchema } from '../schema/types';
 
-/**
- *  @category Error
- *  Error that indicates a failure happening when parsing encoding/executing a Signature
- */
 export class SignatureValidationError extends TokenValidationError {
   name = 'SignatureValidationError';
   constructor(public value: any, public token: SignatureToken, message: string) {
@@ -20,7 +16,7 @@ export class SignatureValidationError extends TokenValidationError {
 }
 
 export class SignatureToken extends ComparableToken {
-  static prim: 'signature' = 'signature' as const;
+  static prim: 'signature' = 'signature';
 
   constructor(
     protected val: { prim: string; args: any[]; annots: any[] },
@@ -38,37 +34,44 @@ export class SignatureToken extends ComparableToken {
     return val.bytes;
   }
 
-  /**
-   * @throws {@link SignatureValidationError}
-   */
-  private validate(value: any) {
+  private isValid(value: any): SignatureValidationError | null {
     if (validateSignature(value) !== ValidationResult.VALID) {
-      throw new SignatureValidationError(value, this, 'Signature is not valid');
+      return new SignatureValidationError(value, this, 'Signature is not valid');
     }
+
+    return null;
   }
 
-  /**
-   * @throws {@link SignatureValidationError}
-   */
   public Encode(args: any[]): any {
     const val = args.pop();
 
-    this.validate(val);
+    const err = this.isValid(val);
+    if (err) {
+      throw err;
+    }
 
     return { string: val };
   }
 
-  /**
-   * @throws {@link SignatureValidationError}
-   */
   public EncodeObject(val: any, semantic?: SemanticEncoding): any {
-    this.validate(val);
+    const err = this.isValid(val);
+    if (err) {
+      throw err;
+    }
 
     if (semantic && semantic[SignatureToken.prim]) {
       return semantic[SignatureToken.prim](val);
     }
 
     return { string: val };
+  }
+
+  /**
+   * @deprecated ExtractSchema has been deprecated in favor of generateSchema
+   *
+   */
+  public ExtractSchema() {
+    return SignatureToken.prim;
   }
 
   generateSchema(): BaseTokenSchema {

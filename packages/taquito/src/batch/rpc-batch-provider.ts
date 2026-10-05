@@ -1,84 +1,78 @@
 import { Context } from '../context';
 import { ContractStorageType, DefaultContractType } from '../contract/contract';
-import { SendParams } from '../contract/contract-methods/contract-method-interface';
+import { ContractMethod } from '../contract/contract-methods/contract-method-flat-param';
 import { ContractProvider } from '../contract/interface';
 import {
   createOriginationOperation,
   createRegisterGlobalConstantOperation,
+  createRevealOperation,
+  createTxRollupOriginationOperation,
   createSetDelegateOperation,
   createTransferOperation,
+  createTxRollupBatchOperation,
   createTransferTicketOperation,
   createIncreasePaidStorageOperation,
-  createSmartRollupAddMessagesOperation,
-  createSmartRollupOriginateOperation,
-  createSmartRollupExecuteOutboxMessageOperation,
-  createUpdateConsensusKeyOperation,
-  createUpdateCompanionKeyOperation,
 } from '../contract/prepare';
 import { BatchOperation } from '../operations/batch-operation';
+import { OperationEmitter } from '../operations/operation-emitter';
 import {
   ActivationParams,
   DelegateParams,
   OriginateParams,
+  RPCOperation,
   TransferParams,
   ParamsWithKind,
+  isOpWithFee,
+  withKind,
+  RevealParams,
   RegisterGlobalConstantParams,
+  TxRollupOriginateParams,
+  TxRollupBatchParams,
   TransferTicketParams,
   IncreasePaidStorageParams,
-  SmartRollupAddMessagesParams,
-  SmartRollupOriginateParams,
-  SmartRollupExecuteOutboxMessageParams,
-  UpdateConsensusKeyParams,
-  UpdateCompanionKeyParams,
 } from '../operations/types';
 import { OpKind } from '@taquito/rpc';
 import { ContractMethodObject } from '../contract/contract-methods/contract-method-object-param';
 import {
-  b58DecodeAndCheckPrefix,
-  PrefixV2,
-  publicKeyPrefixes,
   validateAddress,
   validateKeyHash,
-  ValidationResult,
-} from '@taquito/utils';
-import { EstimationProvider } from '../estimate/estimate-provider-interface';
-import {
   InvalidAddressError,
   InvalidKeyHashError,
+  ValidationResult,
   InvalidOperationKindError,
-  InvalidAmountError,
-  InvalidProofError,
-  ProhibitedActionError,
-} from '@taquito/core';
-import { Provider } from '../provider';
-import { PrepareProvider } from '../prepare';
-export { BATCH_KINDS, BatchKinds } from './constants';
+  validateContractAddress,
+  InvalidContractAddressError,
+} from '@taquito/utils';
+import { EstimationProvider } from '../estimate/estimate-provider-interface';
 
-export class OperationBatch extends Provider {
+export const BATCH_KINDS = [
+  OpKind.ACTIVATION,
+  OpKind.ORIGINATION,
+  OpKind.TRANSACTION,
+  OpKind.DELEGATION,
+];
+export type BatchKinds =
+  | OpKind.ACTIVATION
+  | OpKind.ORIGINATION
+  | OpKind.TRANSACTION
+  | OpKind.DELEGATION;
+
+export class OperationBatch extends OperationEmitter {
   private operations: ParamsWithKind[] = [];
 
-  constructor(
-    context: Context,
-    private estimator: EstimationProvider
-  ) {
+  constructor(context: Context, private estimator: EstimationProvider) {
     super(context);
   }
 
-  private prepare = new PrepareProvider(this.context);
-
   /**
    *
-   * Add a transaction operation to the batch
+   * @description Add a transaction operation to the batch
    *
    * @param params Transfer operation parameter
    */
   withTransfer(params: TransferParams) {
-    const toValidation = validateAddress(params.to);
-    if (params.amount < 0) {
-      throw new InvalidAmountError(params.amount.toString());
-    }
-    if (toValidation !== ValidationResult.VALID) {
-      throw new InvalidAddressError(params.to, toValidation);
+    if (validateAddress(params.to) !== ValidationResult.VALID) {
+      throw new InvalidAddressError(params.to);
     }
     this.operations.push({ kind: OpKind.TRANSACTION, ...params });
     return this;
@@ -86,14 +80,13 @@ export class OperationBatch extends Provider {
 
   /**
    *
-   * Transfer tickets from a Tezos address (tz1,tz2 or tz3) to a smart contract address( KT1)
+   * @description Transfer tickets from a Tezos address (tz1,tz2 or tz3) to a smart contract address( KT1)
    *
    * @param params Transfer operation parameter
    */
   withTransferTicket(params: TransferTicketParams) {
-    const destinationValidation = validateAddress(params.destination);
-    if (destinationValidation !== ValidationResult.VALID) {
-      throw new InvalidAddressError(params.destination, destinationValidation);
+    if (validateContractAddress(params.destination) !== ValidationResult.VALID) {
+      throw new InvalidContractAddressError(params.destination);
     }
     this.operations.push({ kind: OpKind.TRANSFER_TICKET, ...params });
     return this;
@@ -101,32 +94,28 @@ export class OperationBatch extends Provider {
 
   /**
    *
-   * Add a contract call to the batch
+   * @description Add a transaction operation to the batch
    *
-   * @param params Call a contract method
-   * @param options Generic operation parameters
+   * @param params Transfer operation parameter
    */
   withContractCall(
-    params: ContractMethodObject<ContractProvider>,
-    options: Partial<SendParams> = {}
+    params: ContractMethod<ContractProvider> | ContractMethodObject<ContractProvider>
   ) {
-    return this.withTransfer(params.toTransferParams(options));
+    return this.withTransfer(params.toTransferParams());
   }
 
   /**
    *
-   * Add a delegation operation to the batch
+   * @description Add a delegation operation to the batch
    *
    * @param params Delegation operation parameter
    */
   withDelegation(params: DelegateParams) {
-    const sourceValidation = validateAddress(params.source ?? '');
-    if (params.source && sourceValidation !== ValidationResult.VALID) {
-      throw new InvalidAddressError(params.source, sourceValidation);
+    if (params.source && validateAddress(params.source) !== ValidationResult.VALID) {
+      throw new InvalidAddressError(params.source);
     }
-    const delegateValidation = validateAddress(params.delegate ?? '');
-    if (params.delegate && delegateValidation !== ValidationResult.VALID) {
-      throw new InvalidAddressError(params.delegate, delegateValidation);
+    if (params.delegate && validateAddress(params.delegate) !== ValidationResult.VALID) {
+      throw new InvalidAddressError(params.delegate);
     }
     this.operations.push({ kind: OpKind.DELEGATION, ...params });
     return this;
@@ -134,15 +123,13 @@ export class OperationBatch extends Provider {
 
   /**
    *
-   * Add an activation operation to the batch
+   * @description Add an activation operation to the batch
    *
    * @param params Activation operation parameter
-   * @throws InvalidKeyHashError
    */
   withActivation({ pkh, secret }: ActivationParams) {
-    const pkhValidation = validateKeyHash(pkh);
-    if (pkhValidation !== ValidationResult.VALID) {
-      throw new InvalidKeyHashError(pkh, pkhValidation);
+    if (validateKeyHash(pkh) !== ValidationResult.VALID) {
+      throw new InvalidKeyHashError(pkh);
     }
     this.operations.push({ kind: OpKind.ACTIVATION, pkh, secret });
     return this;
@@ -150,7 +137,7 @@ export class OperationBatch extends Provider {
 
   /**
    *
-   * Add an origination operation to the batch
+   * @description Add an origination operation to the batch
    *
    * @param params Origination operation parameter
    */
@@ -163,7 +150,7 @@ export class OperationBatch extends Provider {
 
   /**
    *
-   * Add a register a global constant operation to the batch
+   * @description Add an operation to register a global constant to the batch
    *
    * @param params RegisterGlobalConstant operation parameter
    */
@@ -174,7 +161,7 @@ export class OperationBatch extends Provider {
 
   /**
    *
-   * Add an increase paid storage operation to the batch
+   * @description Add an operation to increase paid storage to the batch
    *
    * @param params IncreasePaidStorage operation parameter
    */
@@ -185,79 +172,27 @@ export class OperationBatch extends Provider {
 
   /**
    *
-   * Add a update consensus key operation to the batch
-   *
-   * @param params UpdateConsensusKey operation parameter
-   */
-  withUpdateConsensusKey(params: UpdateConsensusKeyParams) {
-    const [, pkPrefix] = b58DecodeAndCheckPrefix(params.pk, publicKeyPrefixes);
-    if (pkPrefix === PrefixV2.BLS12_381PublicKey) {
-      if (!params.proof) {
-        throw new InvalidProofError('Proof is required to set a bls account as consensus key ');
-      }
-    } else {
-      if (params.proof) {
-        throw new ProhibitedActionError(
-          'Proof field is only allowed for a bls account as consensus key'
-        );
-      }
-    }
-    this.operations.push({ kind: OpKind.UPDATE_CONSENSUS_KEY, ...params });
-    return this;
-  }
-
-  /**
-   *
-   * Add a update companion key operation to the batch
-   *
-   * @param params UpdateCompanionKey operation parameter
-   */
-  withUpdateCompanionKey(params: UpdateCompanionKeyParams) {
-    const [, pkPrefix] = b58DecodeAndCheckPrefix(params.pk, publicKeyPrefixes);
-    if (pkPrefix !== PrefixV2.BLS12_381PublicKey) {
-      throw new ProhibitedActionError('companion key must be a bls account');
-    }
-    if (!params.proof) {
-      throw new InvalidProofError('Proof is required to set a bls account as companion key ');
-    }
-    this.operations.push({ kind: OpKind.UPDATE_COMPANION_KEY, ...params });
-    return this;
-  }
-
-  /**
-   *
-   * Add a smart rollup add messages operation to the batch
+   * @description Add an operation to originate a rollup to the batch
    *
    * @param params Rollup origination operation parameter
    */
-  withSmartRollupAddMessages(params: SmartRollupAddMessagesParams) {
-    this.operations.push({ kind: OpKind.SMART_ROLLUP_ADD_MESSAGES, ...params });
+  withTxRollupOrigination(params?: TxRollupOriginateParams) {
+    this.operations.push({ kind: OpKind.TX_ROLLUP_ORIGINATION, ...params });
     return this;
   }
 
   /**
    *
-   * Add a smart rollup originate operation to the batch
+   * @description Add an operation to submit a tx rollup batch to the batch
    *
-   * @param params Smart Rollup Originate operation parameter
+   * @param params Tx rollup batch operation parameter
    */
-  withSmartRollupOriginate(params: SmartRollupOriginateParams) {
-    this.operations.push({ kind: OpKind.SMART_ROLLUP_ORIGINATE, ...params });
+  withTxRollupSubmitBatch(params: TxRollupBatchParams) {
+    this.operations.push({ kind: OpKind.TX_ROLLUP_SUBMIT_BATCH, ...params });
     return this;
   }
 
-  /**
-   *
-   * Add a smart rollup execute outbox message to the batch
-   *
-   * @param params Smart Rollup Execute Outbox Message operation parameter
-   */
-  withSmartRollupExecuteOutboxMessage(params: SmartRollupExecuteOutboxMessageParams) {
-    this.operations.push({ kind: OpKind.SMART_ROLLUP_EXECUTE_OUTBOX_MESSAGE, ...params });
-    return this;
-  }
-
-  async getRPCOp(param: ParamsWithKind) {
+  private async getRPCOp(param: ParamsWithKind) {
     switch (param.kind) {
       case OpKind.TRANSACTION:
         return createTransferOperation({
@@ -273,6 +208,10 @@ export class OperationBatch extends Provider {
         return createSetDelegateOperation({
           ...param,
         });
+      case OpKind.ACTIVATION:
+        return {
+          ...param,
+        };
       case OpKind.REGISTER_GLOBAL_CONSTANT:
         return createRegisterGlobalConstantOperation({
           ...param,
@@ -281,41 +220,28 @@ export class OperationBatch extends Provider {
         return createIncreasePaidStorageOperation({
           ...param,
         });
-      case OpKind.UPDATE_CONSENSUS_KEY:
-        return createUpdateConsensusKeyOperation({
+      case OpKind.TX_ROLLUP_ORIGINATION:
+        return createTxRollupOriginationOperation({
           ...param,
         });
-      case OpKind.UPDATE_COMPANION_KEY:
-        return createUpdateCompanionKeyOperation({
+      case OpKind.TX_ROLLUP_SUBMIT_BATCH:
+        return createTxRollupBatchOperation({
           ...param,
         });
       case OpKind.TRANSFER_TICKET:
         return createTransferTicketOperation({
           ...param,
         });
-      case OpKind.SMART_ROLLUP_ADD_MESSAGES:
-        return createSmartRollupAddMessagesOperation({
-          ...param,
-        });
-      case OpKind.SMART_ROLLUP_ORIGINATE:
-        return createSmartRollupOriginateOperation({
-          ...param,
-        });
-      case OpKind.SMART_ROLLUP_EXECUTE_OUTBOX_MESSAGE:
-        return createSmartRollupExecuteOutboxMessageOperation({
-          ...param,
-        });
       default:
-        throw new InvalidOperationKindError(JSON.stringify((param as any).kind));
+        throw new InvalidOperationKindError((param as any).kind);
     }
   }
 
   /**
    *
-   * Add a group operation to the batch. Operation will be applied in the order they are in the params array
+   * @description Add a group operation to the batch. Operation will be applied in the order they are in the params array
    *
    * @param params Operations parameter
-   * @throws InvalidOperationKindError
    */
   with(params: ParamsWithKind[]) {
     for (const param of params) {
@@ -338,20 +264,17 @@ export class OperationBatch extends Provider {
         case OpKind.INCREASE_PAID_STORAGE:
           this.withIncreasePaidStorage(param);
           break;
+        case OpKind.TX_ROLLUP_ORIGINATION:
+          this.withTxRollupOrigination(param);
+          break;
+        case OpKind.TX_ROLLUP_SUBMIT_BATCH:
+          this.withTxRollupSubmitBatch(param);
+          break;
         case OpKind.TRANSFER_TICKET:
           this.withTransferTicket(param);
           break;
-        case OpKind.SMART_ROLLUP_ADD_MESSAGES:
-          this.withSmartRollupAddMessages(param);
-          break;
-        case OpKind.SMART_ROLLUP_ORIGINATE:
-          this.withSmartRollupOriginate(param);
-          break;
-        case OpKind.SMART_ROLLUP_EXECUTE_OUTBOX_MESSAGE:
-          this.withSmartRollupExecuteOutboxMessage(param);
-          break;
         default:
-          throw new InvalidOperationKindError(JSON.stringify((param as any).kind));
+          throw new InvalidOperationKindError((param as any).kind);
       }
     }
 
@@ -360,42 +283,51 @@ export class OperationBatch extends Provider {
 
   /**
    *
-   * Forge and Inject the operation batch
+   * @description Forge and Inject the operation batch
    *
    * @param params Optionally specify the source of the operation
    */
   async send(params?: { source?: string }) {
     const publicKeyHash = await this.signer.publicKeyHash();
-    const source = (params && params.source) || publicKeyHash;
+    const publicKey = await this.signer.publicKey();
     const estimates = await this.estimator.batch(this.operations);
 
-    if (estimates.length !== this.operations.length) {
-      estimates.shift();
-    }
-    const preparedOp = await this.prepare.batch(this.operations, estimates);
+    const revealNeeded = await this.isRevealOpNeeded(this.operations, publicKeyHash);
+    let i = revealNeeded ? 1 : 0;
 
-    const opBytes = await this.forge(preparedOp);
-    const { hash, context, forgedBytes, opResponse } = await this.signAndInject(opBytes);
-    return new BatchOperation(
-      hash,
-      preparedOp.opOb.contents,
+    const ops: RPCOperation[] = [];
+    for (const op of this.operations) {
+      if (isOpWithFee(op)) {
+        const estimated = await this.estimate(op, async () => estimates[i]);
+        ops.push(await this.getRPCOp({ ...op, ...estimated }));
+      } else {
+        ops.push({ ...op });
+      }
+      i++;
+    }
+    if (revealNeeded) {
+      const reveal: withKind<RevealParams, OpKind.REVEAL> = { kind: OpKind.REVEAL };
+      const estimatedReveal = await this.estimate(reveal, async () => estimates[0]);
+      ops.unshift(await createRevealOperation({ ...estimatedReveal }, publicKeyHash, publicKey));
+    }
+
+    const source = (params && params.source) || publicKeyHash;
+    const prepared = await this.prepareOperation({
+      operation: ops,
       source,
-      forgedBytes,
-      opResponse,
-      context
-    );
+    });
+    const opBytes = await this.forge(prepared);
+    const { hash, context, forgedBytes, opResponse } = await this.signAndInject(opBytes);
+    return new BatchOperation(hash, ops, source, forgedBytes, opResponse, context);
   }
 }
 
 export class RPCBatchProvider {
-  constructor(
-    private context: Context,
-    private estimator: EstimationProvider
-  ) {}
+  constructor(private context: Context, private estimator: EstimationProvider) {}
 
   /***
    *
-   * Batch a group of operation together. Operations will be applied in the order in which they are added to the batch
+   * @description Batch a group of operation together. Operations will be applied in the order in which they are added to the batch
    *
    * @param params List of operation to batch together
    */

@@ -1,19 +1,14 @@
 import { MichelsonV1Expression, MichelsonV1ExpressionExtended } from '@taquito/rpc';
 import { TokenSchema } from '../schema/types';
-import { TaquitoError } from '@taquito/core';
 
 /**
  *  @category Error
- *  Error that indicates a failure when encoding invalid or incorrect data (e.g. if an address is expected but a number is received)
+ *  @description Error that indicates a failure when encoding invalid or incorrect data (e.g. if an address is expected but a number is received)
  */
-export abstract class TokenValidationError extends TaquitoError {
-  name = 'TokenValidationError';
+export abstract class TokenValidationError extends Error {
+  name = 'ValidationError';
 
-  constructor(
-    public readonly value: any,
-    public readonly token: Token,
-    baseMessage: string
-  ) {
+  constructor(public value: any, public token: Token, baseMessage: string) {
     super();
     const annot = this.token.annot();
     const annotText = annot ? `[${annot}] ` : '';
@@ -21,11 +16,7 @@ export abstract class TokenValidationError extends TaquitoError {
   }
 }
 
-export type TokenFactory = (
-  val: any,
-  idx: number,
-  parentTokenType?: 'Or' | 'Pair' | 'Other'
-) => Token;
+export type TokenFactory = (val: any, idx: number) => Token;
 
 export interface Semantic {
   [key: string]: (value: MichelsonV1Expression, schema: MichelsonV1Expression) => any;
@@ -35,37 +26,12 @@ export interface SemanticEncoding {
   [key: string]: (value: any, type?: MichelsonV1Expression) => MichelsonV1Expression;
 }
 
-/**
- * Possible strategies for mapping between javascript classes and Michelson values
- * Legacy: The old behaviour: { annot1: 'some value', annot2: 'other Value', annot3: { 2: 'yet another value', 3: 'also some value' }}
- * ResetFieldNumbersInNestedObjects: { annot1: 'some value', annot2: 'other Value', annot3: { 0: 'yet another value', 1: 'also some value' }}
- * Latest: This will include new changes as we might implement in the future. This is the suggested value if it does not break your code
- */
-export type FieldNumberingStrategy = 'Legacy' | 'ResetFieldNumbersInNestedObjects' | 'Latest';
-
 export abstract class Token {
-  private static _fieldNumberingStrategy: FieldNumberingStrategy = 'Latest';
-
-  /**
-   * Gets the strategy used for field numbering in Token execute/encode/decode to convert Michelson values to/from javascript objects, returns a value of type {@link FieldNumberingStrategy} that controls how field numbers are calculated
-   */
-  static get fieldNumberingStrategy() {
-    return Token._fieldNumberingStrategy;
-  }
-
-  /**
-   * Sets the strategy used for field numbering in Token execute/encode/decode to convert Michelson values to/from javascript objects, accepts a value of type {@link FieldNumberingStrategy} that controls how field numbers are calculated
-   */
-  static set fieldNumberingStrategy(value: FieldNumberingStrategy) {
-    Token._fieldNumberingStrategy = value;
-  }
-
   constructor(
     protected val: MichelsonV1ExpressionExtended,
     protected idx: number,
-    protected fac: TokenFactory,
-    protected parentTokenType?: 'Or' | 'Pair' | 'Other'
-  ) { }
+    protected fac: TokenFactory
+  ) {}
 
   protected typeWithoutAnnotations() {
     const handleMichelsonExpression = (val: MichelsonV1Expression): MichelsonV1Expression => {
@@ -125,6 +91,12 @@ export abstract class Token {
 
   public createToken = this.fac;
 
+  /**
+   * @deprecated ExtractSchema has been deprecated in favor of generateSchema
+   *
+   */
+  public abstract ExtractSchema(): any;
+
   abstract generateSchema(): TokenSchema;
 
   public abstract Execute(val: any, semantics?: Semantic): any;
@@ -134,7 +106,7 @@ export abstract class Token {
   public abstract EncodeObject(args: any, semantics?: SemanticEncoding): any;
 
   public ExtractSignature() {
-    return [[this.generateSchema()]];
+    return [[this.ExtractSchema()]];
   }
 
   abstract findAndReturnTokens(tokenToFind: string, tokens: Array<Token>): Array<Token>;
@@ -150,6 +122,10 @@ export abstract class ComparableToken extends Token {
   abstract ToKey(val: string | MichelsonV1Expression): any;
 
   compare(o1: string, o2: string): number {
-    return o1 < o2 ? -1 : o1 > o2 ? 1 : 0;
+    if (o1 === o2) {
+      return 0;
+    }
+
+    return o1 < o2 ? -1 : 1;
   }
 }

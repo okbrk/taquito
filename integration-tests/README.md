@@ -1,151 +1,102 @@
 # Taquito Integration Tests
 
+The `taquito/integration-tests` directory contains Taquito's integration test suite. These tests exercise many use cases of Taquito against a live Tezos testnet.
 
-The `taquito/integration-tests` directory contains the integration test suite for Taquito. These tests are executed against live Tezos testnets, ensuring a comprehensive evaluation of various Taquito use cases.
+## How to run the tests
+ 
+To run the tests, you must have:
 
-The tests may also be run using Flextesa. This is useful for testing new features not in current test nets and for testing features around governance that benefit from shortened block processing times. As well Flextesa tests offer a secondary confirmation of the test net results.
+- The Taquito source code cloned to your computer
+- A node.js, the current LTS version is a good choice
+- Compiled the Taquito suite of packages
 
-Internally Taquito is tested with tests running in parallel. This is achieved using an application that generates new keys and funds them as needed per test.
-The application is not publicly available. External users, therefore, must run the Taquito Integration Tests in sequence, one test at a time.
+### Prerequisite building Taquito
 
-## Running Integration Tests Against a Tezos Testnet
-
-
-To run tests in this environment, make sure you have:
-
-
-- Taquito source code cloned to your local machine
-- A compatible version of Node.js installed (see the top-level README.md)
-- Successfully compiled Taquito (see the top-level README)
-
-
-### Running all tests against the default testnet
-
-
-From the `taquito/integration-tests` directory, run the following:
-
+To compile Taquito before running tests.
+Start in the root folder of `taquito/`
 
 ```
-npm run test # Default provider is shadownet (matches CI)
+npm run clean # Optional step to clean out node_modules 
+npm run bootstrap # installs dependencies for all packages
+npm run build  # Builds all Taquito packages
 ```
 
+## Running all tests against all pre-configured testnets
+
+from the `taquito/integration-tests` directory run
+
+```
+npm run test # This runs all tests against all pre-configured testnets
+```
 
 ### Running all tests against a specific testnet
 
-
-Depending on the current Tezos upgrade cycle, multiple testnet networks may be configured in the Taquito integration tests. To target a specific testnet, use environment variables found in `taquito/integration-tests/config.ts` (see the Configuration section below):
-
+Depending on where we are in the Tezos protocol proposal upgrade cycle, there could be more than one testnet network configured in the Taquito integration-tests. Targeting a specific testnet can be done using environment variables. The testnet environment variables are found in `taquito/integration-tests/config.ts` (See Configuration section below)  
 
 ```
-SHADOWNET=true npm run test
+JAKARTANET=true npm run test
+```
+
+To target a specific test within the suite, use the jest `--testNamePattern=<regex>` parameter, or `-t` for short.
+
+Specify the "spec name" of the test you wish to run. Doing this with `npm` looks like this:
+`npm run test -- -t "Title of test here"`
+
+If you have a test spec with the name `it('does some stuff)` or `test('does some stuff)` (then the command `npm run test -- -t "does some stuff"` will run this test only.
+
+For example,
+```
+npm run test -- -t "Originate FA1.2 contract and fetch data from view entrypoints" 
 ```
 
 ## Configuration
 
-Refer to the `taquito/integration-tests/config.ts` file for details on test configurations and target networks. Some configurations have default values that can be overridden using environment variables. Sometimes, you can use CLI commands to invoke a configuration instead of exporting it.
+See the `taquito/integration-tests/config.ts` file for details of test configurations and target networks. Some configurations have default values that can be overridden using environment variables. In some cases you can use cli commands to invoke a configuration instread of having to export. 
 
-### Common CI Reliability Variables
+## CLI options
 
-- `TAQUITO_KEYGEN_URL`: overrides the Keygen API base URL (default: `http://keygen-direct.ecadinfra.com` on GitHub Actions, otherwise `https://keygen.ecadinfra.com`)
-- `TAQUITO_KEYGEN_REQUEST_TIMEOUT_MS`: fail-fast timeout (in ms) for Keygen API HTTP requests (default: `30000`)
-- `TAQUITO_FRESH_KEY_MAX_ATTEMPTS`: max attempts when selecting a fresh key (default: `5`)
-- `TAQUITO_FRESH_KEY_RETRY_MS`: delay between fresh-key retry attempts in ms (default: `0`)
-- `TAQUITO_ITEST_DIAGNOSTICS=true`: enables structured setup/key selection diagnostics in test logs
-
-
-## CLI Options
-
-
-If different testnets are configured in the `config.ts` file, you can run tests on a specific testnet using the command-line parameter for a test file:
-
+If the different testnets are configured in the config.ts file you can run on a given test net by using the command line paramater like this for a test file:
 
 ```
-npm run test:shadownet contract-with-bigmap-init.spec.ts
+npm run test:jakartanet "manager-wallet-scenario.spec.ts"
 ```
 
-
-Or for a specific test within a test file:
-
+or like this for a spec with a test file
 
 ```
-npm run test:shadownet -- -t "Verify contract.originate for a contract and call deposit method with unit param"
+npm run test:jakartanet -- -t "Originate FA1.2 contract and fetch data from view entrypoints" 
 ```
 
+## How to run against a specific RPC URL
 
-## Running Tests Against a Specific RPC URL
+To run tests against a node that is not preconfigured in Taquito you can use 
+`export TEZOS_RPC_JAKARTANET='http://localhost:8732'`. 
 
+## How to use a secret key instead of the keygen api
 
-To run tests against a node that is not pre-configured in Taquito, use:
-
-
-`export TEZOS_RPC_SHADOWNET='http://localhost:8732'`.
-
-## Using a Secret Key Instead of the Keygen API
-
-
-By default, the integration tests use an ephemeral key managed by the Keygen API, which requires internal access (for detail on Keygen see the below). However, to use a secret key of your own instead, use the CLI option `<testnet>-secret-key`, like this:
-
+By default, the integration tests will use an ephemeral key handled by the Keygen API. To use a secret key instead you can use the cli option <testnet>-secret-key, like this:
 
 ```
-npm run test:shadownet-secret-key contract-with-bigmap-init.spec.ts
+npm run test:kathmandunet-secret-key manager-wallet-scenario.spec.ts
 ```
 
-
-You can set your secret key (and password), or the `defaultSecretKey` from `config.ts` will be used:
-
-
+You can set your own secret key (and password) or the `defaultSecretKey` from `config.ts` will be used:
 ```
 export SECRET_KEY='edsk...'
 ```
 
+If running the test from a configured secret key, make sure that the balance of the account is not 0.
 
-If running the test with a configured secret key, ensure that the account balance is not zero.
+## How to configure a different polling interval
 
+Taquito does polling on the head block to confirm that an operation is included in the blockchain using a configurable polling interval. Setting a custom polling interval can be helpful, especially when running the integration tests against a sandbox with low time between blocks. You can configure the polling interval as follows:
+```
+export POLLING_INTERVAL_MILLISECONDS=100
+```
 
-## Test Report
+## How to configure a different RPC cache ttl
 
-
-Vitest prints the test summary directly in the terminal. Coverage artifacts are written under the integration test coverage output directory when coverage is enabled.
-
-
-## Taquito Integration Tests with Flextesa
-
-:::warning
-Due to the discontinuation of Flextesa support from Protocol Oxford onwards, we unfortunately will not be testing against sandboxes anymore.
-
-The only sandbox tests we're running points to the latest Nairobibox to specifically test for the `ballot` and `drain_delegate` operation.
-:::
-
-## The Keygen API
-
-The Keygen API in Taquito is specifically designed for testing purposes. It allows developers to generate and manage key pairs (public and private keys) for Tezos accounts during the testing phase of their applications. This is useful for simulating various scenarios, such as transactions, smart contract interactions, and other on-chain operations, without the need to use real Tezos accounts or real funds.
-
-This tool is employed internally for Taquito Integration tests within the Continuous Integration and Continuous Delivery (CI/CD) system.
-
-### How the Keygen API works
-
-```mermaid
-sequenceDiagram
-participant User
-participant Keygen
-participant Redis
-
-User->>+Keygen: Get Ephemeral Key
-Keygen->>+Redis: Pop Key from pool
-Keygen->>+Redis: Create lease entry in Redis (with expiry date)
-Keygen-->>+User: Return Ephemeral Key Lease ID
-User->>+User: Create a remote signer with Lease ID
-
-loop
-    User->>+Keygen: Sign Operation
-    Keygen->>+Redis: Retrieve private key to sign based on Lease ID
-    Keygen->>+Keygen: Sign user data
-    Keygen-->>+User: Return Signed Operation
-end
-
-Redis->>+Redis: Remove lease entry
-Redis->>+Keygen: Publish removal event
-Keygen->>+Redis: Add key to pool if amount is smaller than spendable amount
-
-User->>+Keygen: 404 :[
+Responses from GET requests to RPC are cached with a default time of 1000 milliseconds when running integration tests. Caching can be disabled as follows:
+```
+export RPC_CACHE_MILLISECONDS=0
 ```

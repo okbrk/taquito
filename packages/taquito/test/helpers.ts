@@ -6,12 +6,11 @@ import {
   OperationContentsAndResultOrigination,
   OperationContentsAndResultDelegation,
   OperationContentsAndResultRegisterGlobalConstant,
+  OperationContentsAndResultTxRollupOrigination,
+  OperationContentsAndResultTxRollupSubmitBatch,
   OperationContentsAndResultTransferTicket,
   OperationContentsAndResultIncreasePaidStorage,
-  OperationContentsAndResultUpdateConsensusKey,
-  OperationContentsAndResultUpdateCompanionKey,
 } from '@taquito/rpc';
-import { PreparedOperation } from '../src/prepare';
 
 const defaultTransferData = {
   kind: OpKind.TRANSACTION as OpKind.TRANSACTION,
@@ -68,6 +67,27 @@ const defaultRegisterGlobalConstantData = {
   value: { int: '0' },
 };
 
+const defaultTxRollupOriginateData = {
+  kind: OpKind.TX_ROLLUP_ORIGINATION as OpKind.TX_ROLLUP_ORIGINATION,
+  source: 'tz1bwsEWCwSEXdRvnJxvegQZKeX5dj6oKEys',
+  fee: '2991',
+  counter: '121619',
+  gas_limit: '26260',
+  storage_limit: '257',
+  tx_rollup_origination: {},
+};
+
+const defaultTxSubmitBatchData = {
+  kind: OpKind.TX_ROLLUP_SUBMIT_BATCH as OpKind.TX_ROLLUP_SUBMIT_BATCH,
+  source: 'tz1bwsEWCwSEXdRvnJxvegQZKeX5dj6oKEys',
+  fee: '2991',
+  counter: '121619',
+  gas_limit: '26260',
+  storage_limit: '257',
+  rollup: 'txr1YTdi9BktRmybwhgkhRK7WPrutEWVGJT7w',
+  content: '626c6f62',
+};
+
 const defaultTransferTicketData = {
   kind: OpKind.TRANSFER_TICKET as OpKind.TRANSFER_TICKET,
   source: 'tz1iedjFYksExq8snZK9MNo4AvXHBdXfTsGX',
@@ -92,26 +112,6 @@ const defaultIncreasePaidStorageData = {
   storage_limit: '0',
   amount: '2',
   destination: 'KT1Vjr5PFC2Qm5XbSQZ8MdFZLgYMzwG5WZNh',
-};
-
-const defaultUpdateConsensusKeyData = {
-  kind: OpKind.UPDATE_CONSENSUS_KEY as OpKind.UPDATE_CONSENSUS_KEY,
-  source: 'tz1MY8g5UqVmQtpAp7qs1cUwEof1GjZCHgVv',
-  fee: '369',
-  counter: '19043',
-  gas_limit: '1100',
-  storage_limit: '0',
-  pk: 'edpkti5K5JbdLpp2dCqiTLoLQqs5wqzeVhfHVnNhsSCuoU8zdHYoY7',
-};
-
-const defaultUpdateCompanionKeyData = {
-  kind: OpKind.UPDATE_COMPANION_KEY as OpKind.UPDATE_COMPANION_KEY,
-  source: 'tz1MY8g5UqVmQtpAp7qs1cUwEof1GjZCHgVv',
-  fee: '369',
-  counter: '19043',
-  gas_limit: '1100',
-  storage_limit: '0',
-  pk: 'edpkti5K5JbdLpp2dCqiTLoLQqs5wqzeVhfHVnNhsSCuoU8zdHYoY7',
 };
 
 const defaultResult = {
@@ -292,25 +292,25 @@ export class IncreasePaidStorageOperationBuilder {
   }
 }
 
-export class UpdateConsensusKeyOperationBuilder {
-  private result: OperationContentsAndResultUpdateConsensusKey['metadata']['operation_result'] =
+export class TxRollupOriginationOperationBuilder {
+  private result: OperationContentsAndResultTxRollupOrigination['metadata']['operation_result'] =
     defaultResult;
-  private data: Omit<OperationContentsAndResultUpdateConsensusKey, 'metadata'>;
+  private data: Omit<OperationContentsAndResultTxRollupOrigination, 'metadata'>;
 
   constructor(
-    private _data: Partial<Omit<OperationContentsAndResultUpdateConsensusKey, 'metadata'>> = {}
+    private _data: Partial<Omit<OperationContentsAndResultTxRollupOrigination, 'metadata'>> = {}
   ) {
-    this.data = { ...defaultUpdateConsensusKeyData, ...this._data };
+    this.data = { ...defaultTxRollupOriginateData, ...this._data };
   }
 
   withResult(
-    result: Partial<OperationContentsAndResultUpdateConsensusKey['metadata']['operation_result']>
+    result: Partial<OperationContentsAndResultTxRollupOrigination['metadata']['operation_result']>
   ) {
     this.result = { ...defaultResult, ...result };
     return this;
   }
 
-  build(): OperationContentsAndResultUpdateConsensusKey {
+  build(): OperationContentsAndResultTxRollupOrigination {
     return {
       ...this.data,
       metadata: {
@@ -321,25 +321,25 @@ export class UpdateConsensusKeyOperationBuilder {
   }
 }
 
-export class UpdateCompanionKeyOperationBuilder {
-  private result: OperationContentsAndResultUpdateCompanionKey['metadata']['operation_result'] =
+export class TxRollupSubmitBatchOperationBuilder {
+  private result: OperationContentsAndResultTxRollupSubmitBatch['metadata']['operation_result'] =
     defaultResult;
-  private data: Omit<OperationContentsAndResultUpdateCompanionKey, 'metadata'>;
+  private data: Omit<OperationContentsAndResultTxRollupSubmitBatch, 'metadata'>;
 
   constructor(
-    private _data: Partial<Omit<OperationContentsAndResultUpdateCompanionKey, 'metadata'>> = {}
+    private _data: Partial<Omit<OperationContentsAndResultTxRollupSubmitBatch, 'metadata'>> = {}
   ) {
-    this.data = { ...defaultUpdateCompanionKeyData, ...this._data };
+    this.data = { ...defaultTxSubmitBatchData, ...this._data };
   }
 
   withResult(
-    result: Partial<OperationContentsAndResultUpdateCompanionKey['metadata']['operation_result']>
+    result: Partial<OperationContentsAndResultTxRollupSubmitBatch['metadata']['operation_result']>
   ) {
     this.result = { ...defaultResult, ...result };
     return this;
   }
 
-  build(): OperationContentsAndResultUpdateCompanionKey {
+  build(): OperationContentsAndResultTxRollupSubmitBatch {
     return {
       ...this.data,
       metadata: {
@@ -551,108 +551,3 @@ export const ticketTokenTestMock = {
     ],
   },
 };
-
-export const smallNestedMapTypecheck = {
-  address: '',
-  script: {
-    code: [
-      {
-        prim: 'parameter',
-        args: [
-          {
-            prim: 'unit',
-          },
-        ],
-      },
-      {
-        prim: 'storage',
-        args: [
-          {
-            prim: 'map',
-            args: [
-              {
-                prim: 'string',
-              },
-              {
-                prim: 'map',
-                args: [
-                  {
-                    prim: 'string',
-                  },
-                  {
-                    prim: 'big_map',
-                    args: [
-                      {
-                        prim: 'nat',
-                      },
-                      {
-                        prim: 'nat',
-                      },
-                    ],
-                  },
-                ],
-              },
-            ],
-          },
-        ],
-      },
-      {
-        prim: 'code',
-        args: [
-          [
-            [
-              {
-                prim: 'UNIT',
-              },
-              {
-                prim: 'FAILWITH',
-              },
-            ],
-          ],
-        ],
-      },
-    ],
-    storage: [
-      {
-        prim: 'Elt',
-        args: [
-          {
-            string: 'test',
-          },
-          [
-            {
-              prim: 'Elt',
-              args: [
-                {
-                  string: 'test 2',
-                },
-                {
-                  int: '143106',
-                },
-              ],
-            },
-          ],
-        ],
-      },
-    ],
-  },
-};
-
-export const preparedTransactionMock = {
-  opOb: {
-    branch: 'BKvS9KTjoC5NNbu1P9Z7rUud4cF2Pr2cnKox1RduhCzGy8J53a3',
-    contents: [
-      {
-        kind: 'transaction',
-        fee: '465',
-        gas_limit: '1101',
-        storage_limit: '257',
-        amount: '1000000',
-        destination: 'tz3SBLWcdfGnt4RFSjJnmmvWgeKHooVZKn5P',
-        source: 'tz2XWgpXu3Fqdhsm1FzGQXRqgvqizfFjxpLt',
-        counter: '31552',
-      },
-    ],
-    protocol: 'PtMumbai2TmsJHNGRkD8v8YDbtao7BLUC3wjASn1inAKLFCjaH1',
-  },
-} as PreparedOperation;

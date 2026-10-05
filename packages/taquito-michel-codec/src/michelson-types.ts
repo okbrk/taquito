@@ -71,7 +71,6 @@ type MichelsonNoArgInstructionID =
   | 'SUB_MUTEZ'
   | 'SWAP'
   | 'TICKET'
-  | 'TICKET_DEPRECATED'
   | 'TOTAL_VOTING_POWER'
   | 'TRANSFER_TOKENS'
   | 'UNIT'
@@ -79,12 +78,7 @@ type MichelsonNoArgInstructionID =
   | 'XOR'
   | 'RENAME'
   | 'OPEN_CHEST'
-  | 'MIN_BLOCK_TIME'
-  | 'BYTES'
-  | 'NAT'
-  | 'IS_IMPLICIT_ACCOUNT'
-  | 'INDEX_ADDRESS'
-  | 'GET_ADDRESS_INDEX';
+  | 'MIN_BLOCK_TIME';
 
 type MichelsonRegularInstructionID =
   | 'CONTRACT'
@@ -104,7 +98,6 @@ type MichelsonRegularInstructionID =
   | 'IF_NONE'
   | 'ITER'
   | 'LAMBDA'
-  | 'LAMBDA_REC'
   | 'LEFT'
   | 'LOOP'
   | 'LOOP_LEFT'
@@ -131,7 +124,7 @@ type Instr0<PT extends MichelsonNoArgInstructionID> = Prim0<PT>;
 type InstrX<PT extends MichelsonRegularInstructionID, AT extends Expr[]> = PrimX<PT, AT>;
 
 export type MichelsonCode = InstructionList | MichelsonInstruction;
-export interface InstructionList extends List<MichelsonCode> { }
+export interface InstructionList extends List<MichelsonCode> {}
 
 export type MichelsonNoArgInstruction = Instr0<MichelsonNoArgInstructionID>;
 export type MichelsonInstruction =
@@ -147,7 +140,7 @@ export type MichelsonInstruction =
   | InstrX<'EMPTY_SET', [MichelsonType]>
   | InstrX<'EMPTY_MAP', [MichelsonType, MichelsonType]>
   | InstrX<'EMPTY_BIG_MAP', [MichelsonType, MichelsonType]>
-  | InstrX<'LAMBDA' | 'LAMBDA_REC', [MichelsonType, MichelsonType, InstructionList]>
+  | InstrX<'LAMBDA', [MichelsonType, MichelsonType, InstructionList]>
   | InstrX<'DIP', [IntLiteral, InstructionList] | [InstructionList]>
   | InstrX<'VIEW', [StringLiteral, MichelsonType]>
   | InstrX<'EMIT', [MichelsonType]>
@@ -185,7 +178,6 @@ export type MichelsonTypeID =
   | 'map'
   | 'big_map'
   | 'sapling_transaction'
-  | 'sapling_transaction_deprecated'
   | 'sapling_state'
   | 'ticket'
   | 'bls12_381_g1'
@@ -227,23 +219,22 @@ export type MichelsonTypeChest = Type0<'chest'>;
 type TypeList<T extends MichelsonType[]> = T & Node;
 export type MichelsonTypePair<T extends MichelsonType[]> = TypeX<'pair', T> | TypeList<T>;
 
-export interface MichelsonTypeOption<T extends MichelsonType> extends TypeX<'option', [T]> { }
-export interface MichelsonTypeList<T extends MichelsonType> extends TypeX<'list', [T]> { }
-export interface MichelsonTypeContract<T extends MichelsonType> extends TypeX<'contract', [T]> { }
-export interface MichelsonTypeOr<T extends [MichelsonType, MichelsonType]> extends TypeX<'or', T> { }
+export interface MichelsonTypeOption<T extends MichelsonType> extends TypeX<'option', [T]> {}
+export interface MichelsonTypeList<T extends MichelsonType> extends TypeX<'list', [T]> {}
+export interface MichelsonTypeContract<T extends MichelsonType> extends TypeX<'contract', [T]> {}
+export interface MichelsonTypeOr<T extends [MichelsonType, MichelsonType]> extends TypeX<'or', T> {}
 export interface MichelsonTypeLambda<Arg extends MichelsonType, Ret extends MichelsonType>
-  extends TypeX<'lambda', [Arg, Ret]> { }
-
-export interface MichelsonTypeSet<T extends MichelsonType> extends TypeX<'set', [T]> { }
+  extends TypeX<'lambda', [Arg, Ret]> {}
+export interface MichelsonTypeSet<T extends MichelsonType> extends TypeX<'set', [T]> {}
 export interface MichelsonTypeMap<K extends MichelsonType, V extends MichelsonType>
-  extends TypeX<'map', [K, V]> { }
+  extends TypeX<'map', [K, V]> {}
 export interface MichelsonTypeBigMap<K extends MichelsonType, V extends MichelsonType>
-  extends TypeX<'big_map', [K, V]> { }
+  extends TypeX<'big_map', [K, V]> {}
 export interface MichelsonTypeSaplingState<S extends string = string>
-  extends TypeX<'sapling_state', [IntLiteral<S>]> { }
+  extends TypeX<'sapling_state', [IntLiteral<S>]> {}
 export interface MichelsonTypeSaplingTransaction<S extends string = string>
-  extends TypeX<'sapling_transaction', [IntLiteral<S>]> { }
-export interface MichelsonTypeTicket<T extends MichelsonType> extends TypeX<'ticket', [T]> { }
+  extends TypeX<'sapling_transaction', [IntLiteral<S>]> {}
+export interface MichelsonTypeTicket<T extends MichelsonType> extends TypeX<'ticket', [T]> {}
 
 export type MichelsonType<T extends MichelsonTypeID = MichelsonTypeID> = T extends 'int'
   ? MichelsonTypeInt
@@ -319,9 +310,7 @@ export type MichelsonDataID =
   | 'Pair'
   | 'Left'
   | 'Right'
-  | 'Some'
-  | 'Lambda_rec'
-  | 'Ticket';
+  | 'Some';
 
 type Data0<PT extends MichelsonDataID> = Prim0<PT>;
 type DataX<PT extends MichelsonDataID, AT extends MichelsonData[]> = PrimX<PT, AT>;
@@ -332,11 +321,6 @@ type DataList<T extends MichelsonData[]> = T & Node;
 export type MichelsonDataPair<T extends MichelsonData[]> = DataX<'Pair', T> | DataList<T>;
 export type MichelsonMapElt = PrimX<'Elt', [MichelsonData, MichelsonData]>;
 export type MichelsonMapEltList = List<MichelsonMapElt>;
-export type MichelsonLambdaRec = DataX<'Lambda_rec', [InstructionList]>;
-export type MichelsonTicket = PrimX<
-  'Ticket',
-  [StringLiteral | BytesLiteral, MichelsonType, MichelsonData, IntLiteral]
->;
 
 export type MichelsonData =
   | IntLiteral
@@ -348,9 +332,7 @@ export type MichelsonData =
   | DataList<MichelsonData[]>
   | MichelsonDataPair<MichelsonData[]>
   | InstructionList
-  | MichelsonMapEltList
-  | MichelsonLambdaRec
-  | MichelsonTicket;
+  | MichelsonMapEltList;
 
 // Top level script sections
 
@@ -369,12 +351,12 @@ export type MichelsonContract = MichelsonContractSection[];
 
 export type MichelsonContractSection<T extends MichelsonSectionID = MichelsonSectionID> =
   T extends 'parameter'
-  ? MichelsonContractParameter
-  : T extends 'storage'
-  ? MichelsonContractStorage
-  : T extends 'view'
-  ? MichelsonContractView
-  : MichelsonContractCode;
+    ? MichelsonContractParameter
+    : T extends 'storage'
+    ? MichelsonContractStorage
+    : T extends 'view'
+    ? MichelsonContractView
+    : MichelsonContractCode;
 
 // Code analysis types
 export interface MichelsonTypeFailed {
@@ -396,7 +378,9 @@ export enum Protocol {
   PsDELPH1 = 'PsDELPH1Kxsxt8f9eWbxQeRxkjfbxoqM52jvs5Y5fBxWWh4ifpo',
   PtEdoTez = 'PtEdoTezd3RHSC31mpxxo1npxFjoWWcFgQtxapi51Z8TLu6v6Uq',
   PtEdo2Zk = 'PtEdo2ZkT9oKpimTah6x2embF25oss54njMuPzkJTEi5RqfdZFA',
+  PsFLoren = 'PsFLorenaUUuikDWvMDr6fGBRG8kt3e3D3fHoXK1j1BFRxeSH4i',
   PsFLorena = 'PsFLorenaUUuikDWvMDr6fGBRG8kt3e3D3fHoXK1j1BFRxeSH4i',
+  PtGRANAD = 'PtGRANADsDU8R9daYKAgWnQYAJ64omN1o3KMGVCykShA97vQbvV',
   PtGRANADs = 'PtGRANADsDU8R9daYKAgWnQYAJ64omN1o3KMGVCykShA97vQbvV',
   PtHangzH = 'PtHangzHogokSuiMHemCuowEavgYTP8J5qQ9fQS793MHYFpCY3r',
   PtHangz2 = 'PtHangz2aRngywmSRGGvrcTyMbbdpWdpFKuS4uMWxg2RaH9i1qx',
@@ -405,22 +389,10 @@ export enum Protocol {
   PtJakarta = 'PtJakartaiDz69SfDDLXJSiuZqTSeSKRDbKVZC8MNzJnvRjvnGw',
   PtJakart2 = 'PtJakart2xVj7pYXJBXrqHgd82rdkLey5ZeeGwDgPp9rhQUbSqY',
   PtKathman = 'PtKathmankSpLLDALzWw7CGD2j2MtyveTwboEYokqUCP4a1LxMg',
-  PtLimaPtL = 'PtLimaPtLMwfNinJi9rCfDPWea8dFgTZ1MeJ9f1m2SRic6ayiwW',
-  PtMumbaii = 'PtMumbaiiFFEGbew1rRjzSPyzRbA51Tm3RVZL5suHPxSZYDhCEc',
-  PtMumbai2 = 'PtMumbai2TmsJHNGRkD8v8YDbtao7BLUC3wjASn1inAKLFCjaH1',
-  PtNairobi = 'PtNairobiyssHuh87hEhfVBGCVrK3WnS8Z2FT4ymB5tAa4r1nQf',
-  ProxfordY = 'ProxfordYmVfjWnRcgjWH36fW6PArwqykTFzotUxRs6gmTcZDuH',
-  PtParisBx = 'PtParisBxoLz5gzMmn3d9WBQNoPSZakgnkMC2VNuQ3KXfUtUQeZ',
-  PsParisCZ = 'PsParisCZo7KAh1Z1smVd9ZMZ1HHn5gkzbM94V3PLCpknFWhUAi',
-  PsQuebecn = 'PsQuebecnLByd3JwTiGadoG4nGWi3HYiLXUjkibeFV8dCFeVMUg',
-  PsRiotuma = 'PsRiotumaAMotcRoDWW1bysEhQy2n1M5fy8JgRp8jjRfHGmfeA7',
-  PtSeouLou = 'PtSeouLouXkxhg39oWzjxDWaCydNfR3RxCUrNe4Q9Ro8BTehcbh',
-  PtTALLiNt = 'PtTALLiNtPec7mE7yY4m3k26J8Qukef3E3ehzhfXgFZKGtDdAXu',
-  PsUshuai9 = 'PsUshuai9QapM5TGj1JpuVGkdxz5GykdnEvS6Rh8SUVrARvZLCY',
   ProtoALpha = 'ProtoALphaALphaALphaALphaALphaALphaALphaALphaDdp3zK', // temporary protocol hash
 }
 
-export const DefaultProtocol = Protocol.PsUshuai9;
+export const DefaultProtocol = Protocol.Psithaca2;
 
 export type ProtocolID = `${Protocol}`;
 
@@ -445,22 +417,10 @@ const protoLevel: Record<ProtocolID, number> = {
   PtJakartaiDz69SfDDLXJSiuZqTSeSKRDbKVZC8MNzJnvRjvnGw: 13,
   PtJakart2xVj7pYXJBXrqHgd82rdkLey5ZeeGwDgPp9rhQUbSqY: 13,
   PtKathmankSpLLDALzWw7CGD2j2MtyveTwboEYokqUCP4a1LxMg: 14,
-  PtLimaPtLMwfNinJi9rCfDPWea8dFgTZ1MeJ9f1m2SRic6ayiwW: 15,
-  PtMumbaiiFFEGbew1rRjzSPyzRbA51Tm3RVZL5suHPxSZYDhCEc: 16,
-  PtMumbai2TmsJHNGRkD8v8YDbtao7BLUC3wjASn1inAKLFCjaH1: 16,
-  PtNairobiyssHuh87hEhfVBGCVrK3WnS8Z2FT4ymB5tAa4r1nQf: 17,
-  ProxfordYmVfjWnRcgjWH36fW6PArwqykTFzotUxRs6gmTcZDuH: 19,
-  PtParisBxoLz5gzMmn3d9WBQNoPSZakgnkMC2VNuQ3KXfUtUQeZ: 20,
-  PsParisCZo7KAh1Z1smVd9ZMZ1HHn5gkzbM94V3PLCpknFWhUAi: 20,
-  PsQuebecnLByd3JwTiGadoG4nGWi3HYiLXUjkibeFV8dCFeVMUg: 21,
-  PsRiotumaAMotcRoDWW1bysEhQy2n1M5fy8JgRp8jjRfHGmfeA7: 22,
-  PtSeouLouXkxhg39oWzjxDWaCydNfR3RxCUrNe4Q9Ro8BTehcbh: 23,
-  PtTALLiNtPec7mE7yY4m3k26J8Qukef3E3ehzhfXgFZKGtDdAXu: 24,
-  PsUshuai9QapM5TGj1JpuVGkdxz5GykdnEvS6Rh8SUVrARvZLCY: 25,
-  ProtoALphaALphaALphaALphaALphaALphaALphaALphaDdp3zK: 26,
+  ProtoALphaALphaALphaALphaALphaALphaALphaALphaDdp3zK: 15,
 };
 
-export function ProtoGreaterOrEqual(a: ProtocolID, b: ProtocolID): boolean {
+export function ProtoGreaterOfEqual(a: ProtocolID, b: ProtocolID): boolean {
   return protoLevel[a] >= protoLevel[b];
 }
 

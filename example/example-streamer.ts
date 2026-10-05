@@ -1,21 +1,21 @@
 import { PollingSubscribeProvider, TezosToolkit } from '@taquito/taquito';
 
 async function example() {
-  const provider = 'https://shadownet.tezos.ecadinfra.com/';
+  const provider = 'https://mainnet.api.tez.ie/';
   const tezos = new TezosToolkit(provider)
   tezos.setStreamProvider(tezos.getFactory(PollingSubscribeProvider)({ shouldObservableSubscriptionRetry: true, pollingIntervalMilliseconds: 15000 }));
   try {
 
-    const bakerAttestationFilter = {
-      and: [{ source: 'tz1bQMn5xYFbX6geRxqvuAiTywsCtNywawxH' }, { kind: 'attestation' }]
+    const bakerEndorsementFilter = {
+      and: [{ source: 'tz2TSvNTh2epDMhZHrw73nV9piBX7kLZ9K9m' }, { kind: 'endorsement' }]
     }
 
     const bakerDelegation = {
-      and: [{ destination: 'tz1bQMn5xYFbX6geRxqvuAiTywsCtNywawxH' }, { kind: 'delegation' }]
+      and: [{ destination: 'tz2TSvNTh2epDMhZHrw73nV9piBX7kLZ9K9m' }, { kind: 'delegation' }]
     }
 
     const sub = tezos.stream.subscribeOperation({
-      or: [bakerAttestationFilter, bakerDelegation]
+      or: [bakerEndorsementFilter, bakerDelegation]
     })
 
     sub.on('data', console.log)

@@ -32,11 +32,8 @@ describe('Address token', () => {
 
       try {
         token.Encode(['test']);
-      } catch (ex: unknown) {
-        expect(ex).toBeInstanceOf(AddressValidationError);
-        if (ex instanceof AddressValidationError) {
-          expect(ex.name).toEqual('AddressValidationError');
-        }
+      } catch (ex) {
+        expect(ex.name).toEqual('AddressValidationError');
       }
     });
   });
@@ -49,30 +46,136 @@ describe('Address token', () => {
       });
     });
   });
+});
+describe('Address Token with txr1', () => {
+  let token: AddressToken;
+  beforeEach(() => {
+    token = new AddressToken({ prim: 'address', args: [], annots: [] }, 0, null as any);
+  });
 
+  describe('test ToBigMapKey', () => {
+    it('to bytes', () => {
+      expect(token.ToBigMapKey('txr1MfFbj6diPLS2MN2ntoid6cyuk4mUzLibP')).toEqual({
+        key: { bytes: '02012e7a294c836eeb02010b907c2632b88ed3e23a00' },
+        type: { prim: 'bytes' },
+      });
+    });
+  });
+
+  describe('EncodeObject', () => {
+    it("should add string to object with key 'string'", () => {
+      expect(token.EncodeObject('txr1XHHx4KH3asGN5CMpdqzQA3c7HkfniPRxL')).toEqual({
+        string: 'txr1XHHx4KH3asGN5CMpdqzQA3c7HkfniPRxL',
+      });
+    });
+
+    it('test semantic', () => {
+      const val1 = token.EncodeObject('txr1XHHx4KH3asGN5CMpdqzQA3c7HkfniPRxL', {
+        address: () => ({ string: 'tester' }),
+      });
+      const val2 = token.EncodeObject('txr1XHHx4KH3asGN5CMpdqzQA3c7HkfniPRxL', {
+        address: (arg) => ({ string: arg }),
+      });
+      expect(val1).toEqual({ string: 'tester' });
+      expect(val2).toEqual({ string: 'txr1XHHx4KH3asGN5CMpdqzQA3c7HkfniPRxL' });
+    });
+
+    it('should throw error with invalid args', () => {
+      expect(() => token.EncodeObject('txr1')).toThrowError(AddressValidationError);
+      expect(() => token.EncodeObject([])).toThrowError(AddressValidationError);
+      expect(() => token.EncodeObject({})).toThrowError(AddressValidationError);
+      expect(() => token.EncodeObject(1)).toThrowError(AddressValidationError);
+      expect(() => token.EncodeObject('tz4QZ6KY7d3BuZDT1d19dUxoQrtFPN2QJ3hn')).toThrowError(
+        AddressValidationError
+      );
+    });
+  });
+
+  describe('Encode', () => {
+    it('should encode address to object with key "string"', () => {
+      expect(token.Encode(['txr1XHHx4KH3asGN5CMpdqzQA3c7HkfniPRxL'])).toEqual({
+        string: 'txr1XHHx4KH3asGN5CMpdqzQA3c7HkfniPRxL',
+      });
+    });
+    it('should throw error if address not valid', () => {
+      expect(() => token.Encode(['something'])).toThrowError(AddressValidationError);
+      expect(() => token.Encode(['', '', '', ''])).toThrowError(AddressValidationError);
+      expect(() => token.Encode([])).toThrowError(AddressValidationError);
+      expect(() => token.Encode(['1'])).toThrowError(AddressValidationError);
+      try {
+        token.Encode(['async']);
+      } catch (ex) {
+        expect(ex.name).toEqual('AddressValidationError');
+      }
+    });
+  });
+  describe('generateSchema', () => {
+    it('should generate properly', () => {
+      expect(token.generateSchema()).toEqual({
+        __michelsonType: 'address',
+        schema: 'address',
+      });
+    });
+  });
+
+  describe('Execute', () => {
+    it('should throw if no bytes or string', () => {
+      expect(() => token.Execute({ string: '', bytes: '' })).toThrowError(AddressValidationError);
+    });
+    it('should return string', () => {
+      expect(token.Execute({ string: 'txr1XHHx4KH3asGN5CMpdqzQA3c7HkfniPRxL', bytes: '' })).toEqual(
+        'txr1XHHx4KH3asGN5CMpdqzQA3c7HkfniPRxL'
+      );
+      expect(
+        token.Execute({ bytes: '02f16e732d45ba6f24d5ec421f20ab199b3a82907100', string: '' })
+      ).toEqual('txr1jZaQfi9zdwzJteYkRBSN9D7RDvMh1QNkL');
+    });
+  });
+  describe('Tokey', () => {
+    it('should change bytes to pkh', () => {
+      expect(token.ToKey({ bytes: '02012e7a294c836eeb02010b907c2632b88ed3e23a00' })).toEqual(
+        'txr1MfFbj6diPLS2MN2ntoid6cyuk4mUzLibP'
+      );
+      expect(token.ToKey({ string: 'txr1XHHx4KH3asGN5CMpdqzQA3c7HkfniPRxL' })).toEqual(
+        'txr1XHHx4KH3asGN5CMpdqzQA3c7HkfniPRxL'
+      );
+    });
+    it('throw error if empty', () => {
+      expect(() => token.ToKey({ bytes: '', string: '' })).toThrowError(AddressValidationError);
+    });
+  });
   describe('compare', () => {
-    it('Should compare addresses properly', () => {
-      expect(token.compare("tz1VqAq7XGziEcee4Y4kdVG9XxxJ1r9BmThV", "tz1M8SnwGFB7Hnxgq6rCeyx3aiheyH6b6UMJ")).toEqual(1);
-      expect(token.compare("tz1hu55Z7gPjyGKLTP2kzrBU1NhU76u2jJdx", "tz1VWnvuvhd5hQrX1xCgC9aPhKpDfLDNsetr")).toEqual(1);
-      expect(token.compare("tz1VkT3u3Cpha5sZof3xJviHuRGugJDhpGET", "tz1b8nu4TNAFhn8wXpDjfvZeeT9P8DdqDFsW")).toEqual(-1);
-      expect(token.compare("tz1hyxDxcaZuNmoqYEQUqdatSLwfdBhX9x61", "tz1Xbi5kVw3iYvrcSegLWSDaRJkLSz31XE8f")).toEqual(1);
-      expect(token.compare("tz1PgiGQ2Bcg1FNBPdxxJdAJJ267FeQA78PF", "tz1geFsjAFibHEHypZyCmiGxkNpbyyyArtzs")).toEqual(-1);
-      expect(token.compare("tz2NjNtMdj6KeJNrnnctxPjMWgMZ6EozF4G8", "tz2Cv3bEm12m8M5he5rEHiGmeM5dz5Dt6Cn1")).toEqual(1);
-      expect(token.compare("tz2EPzvK7JPEz5cwpQ5Q5eFCaFA5FSbQzTrD", "tz2LjZSckDHtnTrM4i4zTReQ81cJS8Ufmfpd")).toEqual(-1);
-      expect(token.compare("tz2LRCiqdRDt82sY7z1m7T2Nxz35Kq9dsCF4", "tz2KAgSUucoJwiaVo8fJ5Z1Xu8JRnpcs8Q3C")).toEqual(1);
-      expect(token.compare("tz2SkvMjNH9pBaQG3N5vNBnsUykHVLxqmeQc", "tz2TPznBauRz2RSvWqSCvfL9aRjgURYikXxt")).toEqual(-1);
-      expect(token.compare("tz2Fs1PNZivSmaCRLDnDSAx9uA2a5LbyPiPs", "tz2ChnSybBcDTv7xxiKkH2WumCtv9UTS7hSU")).toEqual(1);
-      expect(token.compare("tz4S6JfUusG7pvmWyPyUBUrJRhHaZeFB32zc", "tz4QjLEb91k82QGhasmcgAzBoyiay5vLMgye")).toEqual(1);
-      expect(token.compare("tz4NFi9HLqcRaGPcaPJbonuzK37d7B76Kjgg", "tz4PEwe6H7cQG9Ce5nSHZcXvkXygJZTs3um7")).toEqual(-1);
-      expect(token.compare("tz4Hmxm1ULZcAwEfRw9bAX8czv5JCpKx3AE5", "tz4HBNXtBfqecLsAxEi9bHwvRMFqAcx3SCAz")).toEqual(1);
-      expect(token.compare("tz4XKRGpf8N2xDL9LbET8SzAMr1PawzqCmq1", "tz4HHJU6Yk89socL7mLemSaDbnZ5fvh8QWK8")).toEqual(1);
-      expect(token.compare("tz4GcUCNYK6MFhQ7xTBsGZWb15zN6tFXfHaZ", "tz4VvT1RjUpT7Ebec8jTDrqNwqTRZU8X3QnM")).toEqual(-1);
-      expect(token.compare("tz2Cv3bEm12m8M5he5rEHiGmeM5dz5Dt6Cn1", "tz1M8SnwGFB7Hnxgq6rCeyx3aiheyH6b6UMJ")).toEqual(1);
-      expect(token.compare("tz3PUX8Kt8x8yxBYePcPcunvcA1U7x4vVX4G", "tz2Cv3bEm12m8M5he5rEHiGmeM5dz5Dt6Cn1")).toEqual(1);
-      expect(token.compare("tz4QjLEb91k82QGhasmcgAzBoyiay5vLMgye", "tz3PUX8Kt8x8yxBYePcPcunvcA1U7x4vVX4G")).toEqual(1);
-
-      expect(token.compare("tz1ddb9NMYHZi5UzPdzTZMYQQZoMub195zgv", "KT1SwbTqhSKF6Pdokiu1K4Fpi17ahPPzmt1X")).toEqual(-1);
-      expect(token.compare("KT1SwbTqhSKF6Pdokiu1K4Fpi17ahPPzmt1X", "sr19LCYLxPx91U7dPuWBMdLyYKdFzGwebPPP")).toEqual(-1);
+    it('should order addresses correctly', () => {
+      expect(
+        token.compare(
+          'KT1CDEg2oY3VfMa1neB7hK5LoVMButvivKYv',
+          'tz2Ch1abG7FNiibmV26Uzgdsnfni9XGrk5wD'
+        )
+      ).toEqual(1);
+      expect(
+        token.compare(
+          'tz3YjfexGakCDeCseXFUpcXPSAN9xHxE9TH2',
+          'tz1ccqAEwfPgeoipnXtjAv1iucrpQv3DFmmS'
+        )
+      ).toEqual(1);
+      expect(
+        token.compare(
+          'KT1CDEg2oY3VfMa1neB7hK5LoVMButvivKYv',
+          'KT1XM8VUFBiM9AC5czWU15fEeE9nmuEYWt3Y'
+        )
+      ).toEqual(-1);
+      expect(
+        token.compare(
+          'txr1YpFMKsYwTJ4YBmYqy2kw4pxCUgeQkZmwo',
+          'txr1YpFMKsYwTJ4YBmYqy2kw4pxCUgeQkZmwo'
+        )
+      ).toEqual(0);
+    });
+  });
+  describe('find return tokens', () => {
+    it('should return or not return token', () => {
+      expect(token.findAndReturnTokens('address', [])).toEqual([token]);
+      expect(token.findAndReturnTokens('tx_rollup_l2_address', [])).toEqual([]);
     });
   });
 });

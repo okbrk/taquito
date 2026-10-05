@@ -4,6 +4,17 @@ import { Schema } from '../src/schema/storage';
 describe('Schema test', () => {
   it('Should parse storage schema properly', () => {
     const schema = new Schema(storage);
+    expect(schema.ExtractSchema()).toEqual({
+      mgr1: {
+        addr: 'address',
+        key: 'key_hash',
+      },
+      mgr2: {
+        addr: 'address',
+        key: 'key_hash',
+      },
+    });
+
     expect(schema.generateSchema()).toEqual({
       __michelsonType: 'pair',
       schema: {
@@ -11,35 +22,35 @@ describe('Schema test', () => {
           __michelsonType: 'pair',
           schema: {
             addr: {
-              __michelsonType: 'address',
-              schema: 'address',
+              __michelsonType: "address",
+              schema: "address"
             },
             key: {
-              __michelsonType: 'option',
-              schema: {
-                __michelsonType: 'key_hash',
-                schema: 'key_hash',
-              },
+              "__michelsonType": "option",
+              "schema": {
+                __michelsonType: "key_hash",
+                schema: "key_hash"
+              }
             },
-          },
+          }
         },
         mgr2: {
           __michelsonType: 'pair',
           schema: {
             addr: {
-              __michelsonType: 'address',
-              schema: 'address',
+              __michelsonType: "address",
+              schema: "address"
             },
             key: {
-              __michelsonType: 'option',
-              schema: {
-                __michelsonType: 'key_hash',
-                schema: 'key_hash',
-              },
+              "__michelsonType": "option",
+              "schema": {
+                __michelsonType: "key_hash",
+                schema: "key_hash"
+              }
             },
-          },
+          }
         },
-      },
+      }
     });
   });
 

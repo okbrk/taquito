@@ -3,20 +3,19 @@
  * @module @taquito/sapling
  */
 
-import { Buffer } from 'buffer';
-import BigNumberJs from 'bignumber.js';
-type BigNumber = InstanceType<typeof BigNumberJs>;
-const BigNumber = BigNumberJs;
+import BigNumber from 'bignumber.js';
 import { MichelCodecPacker, Packer, TzReadProvider } from '@taquito/taquito';
 import {
-  b58DecodeAndCheckPrefix,
-  b58DecodePublicKeyHash,
+  b58cdecode,
   format,
-  PrefixV2,
+  InvalidAddressError,
+  InvalidKeyError,
+  prefix,
+  Prefix,
   validateKeyHash,
   ValidationResult,
 } from '@taquito/utils';
-import { InsufficientBalance, InvalidMemo } from './errors';
+import { InsufficientBalance, InvalidMemo } from './error';
 import { convertValueToBigNumber } from './sapling-tx-viewer/helpers';
 import { InMemorySpendingKey } from './sapling-keys/in-memory-spending-key';
 import { SaplingForger } from './sapling-forger/sapling-forger';
@@ -32,9 +31,6 @@ import {
 import { SaplingTransactionBuilder } from './sapling-tx-builder/sapling-transactions-builder';
 import { DEFAULT_BOUND_DATA, DEFAULT_MEMO } from './constants';
 import { InMemoryProvingKey } from './sapling-keys/in-memory-proving-key';
-import { InvalidAddressError, InvalidKeyHashError } from '@taquito/core';
-export { initSapling, preloadSaplingParams, SaplingParamsError } from './sapling-params-loader';
-export type { SaplingInitOptions, SaplingParamsSource } from './types';
 
 export { SaplingTransactionViewer } from './sapling-tx-viewer/sapling-transaction-viewer';
 export { InMemoryViewingKey } from './sapling-keys/in-memory-viewing-key';
@@ -42,7 +38,7 @@ export { InMemorySpendingKey } from './sapling-keys/in-memory-spending-key';
 export { InMemoryProvingKey } from './sapling-keys/in-memory-proving-key';
 
 /**
- * Class that surfaces all of the sapling capability allowing to read from a sapling state and prepare transactions
+ * @description Class that surfaces all of the sapling capability allowing to read from a sapling state and prepare transactions
  *
  * @param keys.saplingSigner Holds the sapling spending key
  * @param keys.saplingProver (Optional) Allows to generate the proofs with the proving key rather than the spending key
@@ -100,7 +96,7 @@ export class SaplingToolkit {
   }
 
   /**
-   * Get an instance of `SaplingTransactionViewer` which allows to retrieve and decrypt sapling transactions and calculate the unspent balance.
+   * @description Get an instance of `SaplingTransactionViewer` which allows to retrieve and decrypt sapling transactions and calculate the unspent balance.
    */
   async getSaplingTransactionViewer() {
     let saplingTransactionViewer: SaplingTransactionViewer;
@@ -118,7 +114,7 @@ export class SaplingToolkit {
   }
 
   /**
-   * Prepare a shielded transaction
+   * @description Prepare a shielded transaction
    * @param shieldedTxParams `to` is the payment address that will receive the shielded tokens (zet).
    * `amount` is the amount of shielded tokens in tez by default.
    * `mutez` needs to be set to true if the amount of shielded tokens is in mutez.
@@ -151,7 +147,7 @@ export class SaplingToolkit {
   }
 
   /**
-   * Prepare an unshielded transaction
+   * @description Prepare an unshielded transaction
    * @param unshieldedTxParams `to` is the Tezos address that will receive the unshielded tokens (tz1, tz2 or tz3).
    * `amount` is the amount of unshielded tokens in tez by default.
    * `mutez` needs to be set to true if the amount of unshielded tokens is in mutez.
@@ -188,7 +184,7 @@ export class SaplingToolkit {
   }
 
   /**
-   * Prepare a sapling transaction (zet to zet)
+   * @description Prepare a sapling transaction (zet to zet)
    * @param saplingTxParams `to` is the payment address that will receive the shielded tokens (zet).
    * `amount` is the amount of unshielded tokens in tez by default.
    * `mutez` needs to be set to true if the amount of unshielded tokens is in mutez.
@@ -242,7 +238,7 @@ export class SaplingToolkit {
       totalAmount = totalAmount.plus(new BigNumber(amountMutez));
       const memo = param.memo ?? DEFAULT_MEMO;
       if (memo.length > this.#memoSize) {
-        throw new InvalidMemo(memo, `expecting length to be less than ${this.#memoSize}`);
+        throw new InvalidMemo(memo, 'The memo is too long.');
       }
 
       formatedParams.push({ to: param.to, amount: amountMutez, memo });
@@ -263,28 +259,50 @@ export class SaplingToolkit {
       return root;
     }
   }
-
   private async createBoundData(destination: string) {
-    const bytes = b58DecodePublicKeyHash(destination, 'hex');
+    const pref = destination.substr(0, 3);
+
+    let pad: Buffer;
+    switch (pref) {
+      case 'tz1': {
+        pad = Buffer.from('00', 'hex');
+        break;
+      }
+      case 'tz2': {
+        pad = Buffer.from('01', 'hex');
+        break;
+      }
+      case 'tz3': {
+        pad = Buffer.from('02', 'hex');
+        break;
+      }
+      default: {
+        throw new InvalidKeyError(destination, "The 'to' parameter contains an invalid prefix.");
+      }
+    }
+
+    const decodedDestination = b58cdecode(destination, prefix[pref]);
+    const padDestination = Buffer.concat([pad, Buffer.from(decodedDestination)]);
     const packedDestination = await this.#packer.packData({
-      data: { bytes },
+      data: { bytes: padDestination.toString('hex') },
       type: { prim: 'bytes' },
     });
+
     return Buffer.from(packedDestination.packed, 'hex');
   }
 
   private validateDestinationImplicitAddress(to: string) {
-    const toValidation = validateKeyHash(to);
-    if (toValidation !== ValidationResult.VALID) {
-      throw new InvalidKeyHashError(to, toValidation);
+    if (validateKeyHash(to) !== ValidationResult.VALID) {
+      throw new InvalidAddressError(
+        to,
+        "The 'to' parameter must be a Tezos public key hash (tz1, tz2, tz3)."
+      );
     }
   }
 
   private validateDestinationSaplingAddress(to: string) {
-    try {
-      b58DecodeAndCheckPrefix(to, [PrefixV2.SaplingAddress]);
-    } catch {
-      throw new InvalidAddressError(to, `expecting prefix ${PrefixV2.SaplingAddress}.`);
+    if (!to.startsWith(Prefix.ZET1)) {
+      throw new InvalidAddressError(to, "The 'to' parameter must be a sapling address (zet1).");
     }
   }
 
@@ -310,7 +328,8 @@ export class SaplingToolkit {
       if (!input.isSpent && sumSelectedInputs.isLessThan(amountMutez)) {
         const txAmount = convertValueToBigNumber(input.value);
         sumSelectedInputs = sumSelectedInputs.plus(txAmount);
-        const { isSpent: _isSpent, ...rest } = input;
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { isSpent, ...rest } = input;
         inputsToSpend.push(rest);
       }
     });

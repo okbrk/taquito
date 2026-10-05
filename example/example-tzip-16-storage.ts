@@ -1,10 +1,10 @@
 import { MichelsonMap, TezosToolkit } from '@taquito/taquito';
 import { tacoContractTzip16 } from "../integration-tests/data/modified-taco-contract"
-import { stringToBytes } from '@taquito/utils';
+import { char2Bytes } from '@taquito/utils';
 import { InMemorySigner } from '@taquito/signer';
 
 async function example() {
-  const provider = 'https://shadownet.tezos.ecadinfra.com';
+  const provider = 'https://ghostnet.ecadinfra.com';
   const signer = new InMemorySigner('edskRtmEwZxRzwd1obV9pJzAoLoxXFWTSHbgqpDBRHx1Ktzo5yVuJ37e2R4nzjLnNbxFU4UiBU1iHzAy52pK5YBRpaFwLbByca');
   const tezos = new TezosToolkit(provider);
   tezos.setSignerProvider(signer);
@@ -18,14 +18,14 @@ async function example() {
       "version": "0.1",
       "license": "MIT",
       "authors": [
-        "Taquito <https://taquito.io/>"
+        "Taquito <https://tezostaquito.io/>"
       ],
-      "homepage": "https://taquito.io/"
+      "homepage": "https://tezostaquito.io/"
     };
 
     const metadataBigMap = new MichelsonMap();
-    metadataBigMap.set("", stringToBytes('tezos-storage:here'));
-    metadataBigMap.set("here", stringToBytes(JSON.stringify(metadataJSON)))
+    metadataBigMap.set("", char2Bytes('tezos-storage:here'));
+    metadataBigMap.set("here", char2Bytes(JSON.stringify(metadataJSON)))
 
     // Ligo Taco shop contract modified to include metadata in storage
     // https://ide.ligolang.org/p/-uS469slzUlSm1zwNqHl1A

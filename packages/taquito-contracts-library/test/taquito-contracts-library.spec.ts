@@ -1,18 +1,11 @@
-import { InvalidScriptFormatError } from '../src/errors';
+import { InvalidAddressError, InvalidScriptFormatError } from '../src/errors';
 import { ContractsLibrary } from '../src/taquito-contracts-library';
 import { entrypoints, entrypoints2 } from './data/contract-entrypoints';
 import { script, script2 } from './data/contract-script';
-import { VERSION } from '../src/version';
-import { InvalidAddressError } from '@taquito/core';
 
 describe('ContractsLibrary tests', () => {
   it('ContractsLibrary is instantiable', () => {
     expect(new ContractsLibrary()).toBeInstanceOf(ContractsLibrary);
-  });
-
-  it('get VERSION for ContractsLibrary', () => {
-    const version = VERSION;
-    expect(version).toBeDefined();
   });
 
   it('adds one contract to the library', () => {
@@ -90,41 +83,19 @@ describe('ContractsLibrary tests', () => {
   it('throw an InvalidAddress error if the contract address is invalid', () => {
     const contractAddress = 'KTinvalid';
     const contractLib = new ContractsLibrary();
-    expect(() =>
+
+    try {
       contractLib.addContract({
         [contractAddress]: {
           script,
           entrypoints,
         },
-      })
-    ).toThrow(InvalidAddressError);
-    expect(() =>
-      contractLib.addContract({
-        [contractAddress]: {
-          script,
-          entrypoints,
-        },
-      })
-    ).toThrow(
-      expect.objectContaining({
-        message: expect.stringContaining(`Invalid address "KTinvalid"`),
-      })
-    );
-  });
-
-  it('do not throw an InvalidAddress error if the contract address is valid', () => {
-    const contractAddress = 'KT1NGV6nvvedwwjMjCsWY6Vfm6p1q5sMMLDY';
-    const contractLib = new ContractsLibrary();
-
-    contractLib.addContract({
-      [contractAddress]: {
-        script,
-        entrypoints,
-      },
-    });
-    const contractData = contractLib.getContract(contractAddress);
-    expect(contractData.entrypoints).toEqual(entrypoints);
-    expect(contractData.script).toEqual(script);
+      });
+    } catch (e: any) {
+      expect(e).toBeInstanceOf(InvalidAddressError);
+      expect(e.message).toEqual(`Address is invalid: ${contractAddress}`);
+      expect(e).toBeInstanceOf(Error);
+    }
   });
 
   it('throw an InvalidScriptFormatError error if the script format is invalid', () => {
@@ -132,27 +103,19 @@ describe('ContractsLibrary tests', () => {
     const contractLib = new ContractsLibrary();
     const script: any = 'invalid';
 
-    !expect(script.code);
-
-    expect(() =>
+    try {
       contractLib.addContract({
         [contractAddress]: {
           script,
           entrypoints,
         },
-      })
-    ).toThrow(InvalidScriptFormatError);
-    expect(() =>
-      contractLib.addContract({
-        [contractAddress]: {
-          script,
-          entrypoints,
-        },
-      })
-    ).toThrow(
-      expect.objectContaining({
-        message: expect.stringContaining('Invalid script format'),
-      })
-    );
+      });
+    } catch (e: any) {
+      expect(e).toBeInstanceOf(InvalidScriptFormatError);
+      expect(e.message).toEqual(
+        `An invalid script property has been provided for ${contractAddress}. The script property can be retrieved from TezosToolkit.rpc.getNormalizedScript(${contractAddress}). Invalid script: ${script}`
+      );
+      expect(e).toBeInstanceOf(Error);
+    }
   });
 });

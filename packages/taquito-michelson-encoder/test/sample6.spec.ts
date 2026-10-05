@@ -10,94 +10,123 @@ import { ParameterSchema } from '../src/schema/parameter';
 describe('Schema test', () => {
   it('Should extract schema properly', () => {
     const schema = new Schema(storage6);
+    expect(schema.ExtractSchema()).toEqual({
+      key_info: {
+        key_groups: {
+          list: {
+            "group_threshold": "nat",
+            "signatories": {
+              list: "key",
+            },
+          },
+        },
+        "overall_threshold": "nat",
+      },
+      pour_info: {
+        pour_authorizer: 'key',
+        pour_dest: 'contract',
+      },
+      vesting: {
+        vesting_quantities: {
+          vested_balance: 'mutez',
+          vesting_increment: 'mutez',
+        },
+        vesting_schedule: {
+          next_payout: 'timestamp',
+          payout_interval: 'int',
+        },
+      },
+      replay_counter: 'nat',
+    });
+
     expect(schema.generateSchema()).toEqual({
-      __michelsonType: 'pair',
+      __michelsonType: "pair",
       schema: {
         key_info: {
-          __michelsonType: 'pair',
+          __michelsonType: "pair",
           schema: {
             key_groups: {
-              __michelsonType: 'list',
+              __michelsonType: "list",
               schema: {
-                __michelsonType: 'pair',
+                __michelsonType: "pair",
                 schema: {
                   group_threshold: {
-                    __michelsonType: 'nat',
-                    schema: 'nat',
+                    __michelsonType: "nat",
+                    schema: "nat"
                   },
                   signatories: {
-                    __michelsonType: 'list',
+                    __michelsonType: "list",
                     schema: {
-                      __michelsonType: 'key',
-                      schema: 'key',
+                      __michelsonType: "key",
+                      schema: "key"
                     },
                   },
-                },
+                }
               },
             },
             overall_threshold: {
-              __michelsonType: 'nat',
-              schema: 'nat',
+              __michelsonType: "nat",
+              schema: "nat"
             },
-          },
+          }
         },
         pour_info: {
-          __michelsonType: 'option',
+          __michelsonType: "option",
           schema: {
-            __michelsonType: 'pair',
+            __michelsonType: "pair",
             schema: {
               pour_authorizer: {
-                __michelsonType: 'key',
-                schema: 'key',
+                __michelsonType: "key",
+                schema: "key"
               },
               pour_dest: {
-                __michelsonType: 'contract',
+                __michelsonType: "contract",
                 schema: {
                   parameter: {
-                    __michelsonType: 'unit',
-                    schema: 'unit',
-                  },
-                },
+                  __michelsonType: "unit",
+                  schema: "unit"
+                }
+              }
               },
-            },
-          },
+            }
+          }
         },
         vesting: {
-          __michelsonType: 'pair',
+          __michelsonType: "pair",
           schema: {
             vesting_quantities: {
-              __michelsonType: 'pair',
+              __michelsonType: "pair",
               schema: {
                 vested_balance: {
-                  __michelsonType: 'mutez',
-                  schema: 'mutez',
+                  __michelsonType: "mutez",
+                  schema: "mutez"
                 },
                 vesting_increment: {
-                  __michelsonType: 'mutez',
-                  schema: 'mutez',
+                  __michelsonType: "mutez",
+                  schema: "mutez"
                 },
-              },
+              }
             },
             vesting_schedule: {
-              __michelsonType: 'pair',
+              __michelsonType: "pair",
               schema: {
                 next_payout: {
-                  __michelsonType: 'timestamp',
-                  schema: 'timestamp',
+                  __michelsonType: "timestamp",
+                  schema: "timestamp"
                 },
                 payout_interval: {
-                  __michelsonType: 'int',
-                  schema: 'int',
+                  __michelsonType: "int",
+                  schema: "int"
                 },
-              },
+              }
             },
-          },
+          }
         },
         replay_counter: {
-          __michelsonType: 'nat',
-          schema: 'nat',
+          __michelsonType: "nat",
+          schema: "nat"
         },
-      },
+      }
     });
   });
 
@@ -194,146 +223,164 @@ describe('Schema test', () => {
 
   it('Should extract parameter schema properly', () => {
     const schema = new ParameterSchema(params6);
-    expect(schema.generateSchema()).toEqual({
-      __michelsonType: 'or',
-      schema: {
-        Pour: {
-          __michelsonType: 'option',
-          schema: {
-            __michelsonType: 'pair',
-            schema: {
-              pour_amount: {
-                __michelsonType: 'mutez',
-                schema: 'mutez',
-              },
-              pour_auth: {
-                __michelsonType: 'signature',
-                schema: 'signature',
+    expect(schema.ExtractSchema()).toEqual({
+      Pour: {
+        pour_amount: 'mutez',
+        pour_auth: 'signature',
+      },
+      Action: {
+        action_input: {
+          Set_delegate: 'key_hash',
+          Set_keys: {
+            key_groups: {
+              list: {
+                "group_threshold": "nat",
+                "signatories": {
+                  list: "key",
+                },
               },
             },
+            overall_threshold: 'nat',
+          },
+          Set_pour: {
+            pour_authorizer: 'key',
+            pour_dest: 'contract',
+          },
+          Transfer: {
+            dest: 'contract',
+            transfer_amount: 'mutez',
           },
         },
-        Action: {
-          __michelsonType: 'pair',
-          schema: {
-            action_input: {
-              __michelsonType: 'or',
-              schema: {
-                Set_delegate: {
-                  __michelsonType: 'option',
-                  schema: {
-                    __michelsonType: 'key_hash',
-                    schema: 'key_hash',
-                  },
-                },
-                Set_keys: {
-                  __michelsonType: 'pair',
-                  schema: {
-                    key_groups: {
-                      __michelsonType: 'list',
-                      schema: {
-                        __michelsonType: 'pair',
-                        schema: {
-                          group_threshold: {
-                            __michelsonType: 'nat',
-                            schema: 'nat',
-                          },
-                          signatories: {
-                            __michelsonType: 'list',
-                            schema: {
-                              __michelsonType: 'key',
-                              schema: 'key',
-                            },
-                          },
-                        },
-                      },
-                    },
-                    overall_threshold: {
-                      __michelsonType: 'nat',
-                      schema: 'nat',
-                    },
-                  },
-                },
-                Set_pour: {
-                  __michelsonType: 'option',
-                  schema: {
-                    __michelsonType: 'pair',
-                    schema: {
-                      pour_authorizer: {
-                        __michelsonType: 'key',
-                        schema: 'key',
-                      },
-                      pour_dest: {
-                        __michelsonType: 'contract',
-                        schema: {
-                          parameter: {
-                            __michelsonType: 'unit',
-                            schema: 'unit',
-                          },
-                        },
-                      },
-                    },
-                  },
-                },
-                Transfer: {
-                  __michelsonType: 'pair',
-                  schema: {
-                    dest: {
-                      __michelsonType: 'contract',
-                      schema: {
-                        parameter: {
-                          __michelsonType: 'unit',
-                          schema: 'unit',
-                        },
-                      },
-                    },
-                    transfer_amount: {
-                      __michelsonType: 'mutez',
-                      schema: 'mutez',
-                    },
-                  },
-                },
-              },
-            },
-            signatures: {
-              __michelsonType: 'list',
-              schema: {
-                __michelsonType: 'list',
-                schema: {
-                  __michelsonType: 'option',
-                  schema: {
-                    __michelsonType: 'signature',
-                    schema: 'signature',
-                  },
-                },
-              },
-            },
+        signatures: {
+          list: {
+            list: "signature",
           },
         },
       },
     });
 
-    const signatures = schema.ExtractSignatures();
-    expect(signatures).toContainEqual([
-      'Pour',
-      { __michelsonType: 'signature', schema: 'signature' },
-      { __michelsonType: 'mutez', schema: 'mutez' },
-    ]);
-    expect(signatures).toContainEqual([
-      'Action',
-      'Set_delegate',
-      { __michelsonType: 'key_hash', schema: 'key_hash' },
-      {
-        __michelsonType: 'list',
-        schema: {
-          __michelsonType: 'list',
+    expect(schema.generateSchema()).toEqual({
+      __michelsonType: "or",
+      schema: {
+        Pour: {
+          __michelsonType: "option",
           schema: {
-            __michelsonType: 'option',
-            schema: { __michelsonType: 'signature', schema: 'signature' },
-          },
+            __michelsonType: "pair",
+            schema: {
+              pour_amount: {
+                __michelsonType: "mutez",
+                schema: 'mutez'
+              },
+              pour_auth: {
+                __michelsonType: "signature",
+                schema: 'signature'
+              }
+            }
+          }
         },
-      },
-    ]);
+        Action: {
+          __michelsonType: "pair",
+          schema: {
+            action_input: {
+              __michelsonType: "or",
+              schema: {
+                Set_delegate: {
+                  __michelsonType: "option",
+                  schema: {
+                    __michelsonType: "key_hash",
+                    schema: "key_hash"
+                  }
+                },
+                Set_keys: {
+                  __michelsonType: "pair",
+                  schema: {
+                    key_groups: {
+                      __michelsonType: "list",
+                      schema: {
+                        __michelsonType: "pair",
+                        schema: {
+                          group_threshold: {
+                            __michelsonType: "nat",
+                            schema: "nat"
+                          },
+                          signatories: {
+                            __michelsonType: "list",
+                            schema: {
+                              __michelsonType: "key",
+                              schema: "key"
+                            },
+                          }
+                        }
+                      },
+                    },
+                    overall_threshold: {
+                      __michelsonType: "nat",
+                      schema: "nat"
+                    },
+                  }
+                },
+                Set_pour: {
+                  __michelsonType: "option",
+                  schema: {
+                    __michelsonType: "pair",
+                    schema: {
+                      pour_authorizer: {
+                        __michelsonType: "key",
+                        schema: 'key'
+                      },
+                      pour_dest: {
+                        __michelsonType: "contract",
+                        schema: {
+                          parameter: {
+                          __michelsonType: "unit",
+                          schema: 'unit'
+                        }
+                      }
+                      }
+                    }
+                  }
+                },
+                Transfer: {
+                  __michelsonType: "pair",
+                  schema: {
+                    dest: {
+                      __michelsonType: "contract",
+                      schema: {
+                        parameter: {
+                        __michelsonType: "unit",
+                        schema: 'unit'
+                      }
+                    }
+                    },
+                    transfer_amount: {
+                      __michelsonType: "mutez",
+                      schema: 'mutez'
+                    },
+                  }
+                },
+              }
+            },
+            signatures: {
+              __michelsonType: "list",
+              schema: {
+                __michelsonType: "list",
+                schema: {
+                  __michelsonType: "option",
+                  schema: {
+                    __michelsonType: "signature",
+                    schema: 'signature'
+                  }
+                }
+              },
+            },
+          }
+        },
+      }
+    });
+
+    const signatures = schema.ExtractSignatures();
+    expect(signatures).toContainEqual(['Pour', 'signature', 'mutez']);
+    expect(signatures).toContainEqual(['Action', 'Set_delegate', 'key_hash', { "list": { "list": "signature" } }]);
   });
 
   it('Should encode parameter properly', () => {
@@ -453,10 +500,8 @@ describe('Schema test', () => {
         },
       },
       pour_info: {
-        Some: {
-          pour_dest: 'tz3WMqdzXqRWXwyvj5Hp2H7QEepaUuS7vd9K',
-          pour_authorizer: 'edpkv4vUwGVVYnmmuafbEirXrXhT1bzcuJ2xQ3SHfeUVUr56YwgipC',
-        },
+        pour_dest: 'tz3WMqdzXqRWXwyvj5Hp2H7QEepaUuS7vd9K',
+        pour_authorizer: 'edpkv4vUwGVVYnmmuafbEirXrXhT1bzcuJ2xQ3SHfeUVUr56YwgipC',
       },
     });
   });

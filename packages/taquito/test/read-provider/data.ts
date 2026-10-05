@@ -23,7 +23,7 @@ export const constantsRpc = {
   hard_gas_limit_per_operation: new BigNumber('1040000'),
   hard_gas_limit_per_block: new BigNumber('5200000'),
   proof_of_work_threshold: new BigNumber('70368744177663'),
-  minimal_stake: new BigNumber('8000000000'),
+  tokens_per_roll: new BigNumber('8000000000'),
   seed_nonce_revelation_tip: new BigNumber('125000'),
   origination_size: 257,
   block_security_deposit: new BigNumber('640000000'),
@@ -720,5 +720,3 @@ export const liveBlocks = [
   'BMcczQyMnGAzM2WJPQ2vbgyzryg52GQgNWLggpHDKPqhQzJUeT8',
   'BMdaQruY6gep3cmRwGoxEUqx2XJ79XQKqpTT7jusKLA1bSTowRc',
 ];
-
-export const aiLaunchCycle = 6;

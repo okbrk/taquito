@@ -1,10 +1,10 @@
 import { MichelsonMap, TezosToolkit } from '@taquito/taquito';
 import { InMemorySigner } from '@taquito/signer';
 import { tacoContractTzip16 } from "../integration-tests/data/modified-taco-contract"
-import { stringToBytes } from '@taquito/utils';
+import { char2Bytes } from '@taquito/utils';
 
 async function example() {
-  const provider = 'https://shadownet.tezos.ecadinfra.com';
+  const provider = 'https://ghostnet.ecadinfra.com';
   const signer = new InMemorySigner('edskRtmEwZxRzwd1obV9pJzAoLoxXFWTSHbgqpDBRHx1Ktzo5yVuJ37e2R4nzjLnNbxFU4UiBU1iHzAy52pK5YBRpaFwLbByca');
   const tezos = new TezosToolkit(provider);
   tezos.setSignerProvider(signer);
@@ -13,7 +13,7 @@ async function example() {
     console.log('Deploying Tzip16Https contract...');
     // location of the contract metadata
     const url = 'https://storage.googleapis.com/tzip-16/taco-shop-metadata.json';
-    const bytesUrl = stringToBytes(url);
+    const bytesUrl = char2Bytes(url);
 
     const metadataBigMap = new MichelsonMap();
     metadataBigMap.set("", bytesUrl);

@@ -1,34 +1,24 @@
 import { Context } from '../context';
-import { ContractAbstraction } from '../contract/contract';
-import type { ContractStorageType, DefaultWalletType } from '../contract/contract';
-import { SendParams } from '../contract/contract-methods/contract-method-interface';
-import type { ContractMethodObject } from '../contract/contract-methods/contract-method-object-param';
+import { ContractAbstraction, ContractStorageType, DefaultWalletType } from '../contract';
+import { ContractMethod } from '../contract/contract-methods/contract-method-flat-param';
+import { ContractMethodObject } from '../contract/contract-methods/contract-method-object-param';
 import { OpKind, withKind } from '../operations/types';
 import { OriginationWalletOperation } from './origination-operation';
 import {
   WalletDelegateParams,
-  WalletFailingNoopParams,
-  WalletIncreasePaidStorageParams,
   WalletOriginateParams,
   WalletProvider,
   WalletTransferParams,
-  WalletStakeParams,
-  WalletUnstakeParams,
-  WalletFinalizeUnstakeParams,
-  WalletTransferTicketParams,
-  WalletRegisterGlobalConstantParams,
 } from './interface';
+
 import {
-  InvalidAddressError,
+  validateAddress,
+  validateContractAddress,
   InvalidContractAddressError,
+  InvalidAddressError,
+  ValidationResult,
   InvalidOperationKindError,
-  InvalidStakingAddressError,
-  InvalidFinalizeUnstakeAmountError,
-} from '@taquito/core';
-import { validateAddress, validateContractAddress, ValidationResult } from '@taquito/utils';
-import { EntrypointsResponse, OperationContentsFailingNoop, ScriptedContracts } from '@taquito/rpc';
-import { BlockIdentifier } from '../read-provider/interface';
-import { isNotFoundError, retryOnNotFound } from '../contract/not-found-retry';
+} from '@taquito/utils';
 
 export interface PKHOption {
   forceRefetch?: boolean;
@@ -37,97 +27,61 @@ export interface PKHOption {
 export type WalletParamsWithKind =
   | withKind<WalletTransferParams, OpKind.TRANSACTION>
   | withKind<WalletOriginateParams, OpKind.ORIGINATION>
-  | withKind<WalletDelegateParams, OpKind.DELEGATION>
-  | withKind<WalletIncreasePaidStorageParams, OpKind.INCREASE_PAID_STORAGE>
-  | withKind<WalletTransferTicketParams, OpKind.TRANSFER_TICKET>
-  | withKind<WalletRegisterGlobalConstantParams, OpKind.REGISTER_GLOBAL_CONSTANT>;
+  | withKind<WalletDelegateParams, OpKind.DELEGATION>;
 
 export class WalletOperationBatch {
   private operations: WalletParamsWithKind[] = [];
 
-  constructor(
-    private walletProvider: WalletProvider,
-    private context: Context
-  ) {}
+  constructor(private walletProvider: WalletProvider, private context: Context) {}
 
   /**
-   * Add a transaction operation to the batch
+   *
+   * @description Add a transaction operation to the batch
+   *
    * @param params Transfer operation parameter
    */
   withTransfer(params: WalletTransferParams) {
-    const toValidation = validateAddress(params.to);
-    if (toValidation !== ValidationResult.VALID) {
-      throw new InvalidAddressError(params.to, toValidation);
+    if (validateAddress(params.to) !== ValidationResult.VALID) {
+      throw new InvalidAddressError(params.to);
     }
     this.operations.push({ kind: OpKind.TRANSACTION, ...params });
     return this;
   }
 
   /**
-   * Add a contract call to the batch
-   * @param params Call a contract method
-   * @param options Generic operation parameters
+   *
+   * @description Add a transaction operation to the batch
+   *
+   * @param params Transfer operation parameter
    */
-  withContractCall(params: ContractMethodObject<Wallet>, options: Partial<SendParams> = {}) {
-    return this.withTransfer(params.toTransferParams(options));
+  withContractCall(params: ContractMethod<Wallet> | ContractMethodObject<Wallet>) {
+    return this.withTransfer(params.toTransferParams());
   }
 
   /**
-   * Add a delegation operation to the batch
+   *
+   * @description Add a delegation operation to the batch
+   *
    * @param params Delegation operation parameter
    */
   withDelegation(params: WalletDelegateParams) {
-    const delegateValidation = validateAddress(params.delegate ?? '');
-    if (params.delegate && delegateValidation !== ValidationResult.VALID) {
-      throw new InvalidAddressError(params.delegate, delegateValidation);
+    if (params.delegate && validateAddress(params.delegate) !== ValidationResult.VALID) {
+      throw new InvalidAddressError(params.delegate);
     }
     this.operations.push({ kind: OpKind.DELEGATION, ...params });
     return this;
   }
 
   /**
-   * Add an origination operation to the batch
+   *
+   * @description Add an origination operation to the batch
+   *
    * @param params Origination operation parameter
    */
   withOrigination<TWallet extends DefaultWalletType = DefaultWalletType>(
     params: WalletOriginateParams<ContractStorageType<TWallet>>
   ) {
     this.operations.push({ kind: OpKind.ORIGINATION, ...params });
-    return this;
-  }
-
-  /**
-   * Add an IncreasePaidStorage operation to the batch
-   * @param params IncreasePaidStorage operation parameter
-   */
-  withIncreasePaidStorage(params: WalletIncreasePaidStorageParams) {
-    const destinationValidation = validateAddress(params.destination);
-    if (destinationValidation !== ValidationResult.VALID) {
-      throw new InvalidAddressError(params.destination, destinationValidation);
-    }
-    this.operations.push({ kind: OpKind.INCREASE_PAID_STORAGE, ...params });
-    return this;
-  }
-
-  /**
-   * Add an TransferTicket operation to the batch
-   * @param params TransferTicket operation parameter
-   */
-  withTransferTicket(params: WalletTransferTicketParams) {
-    const destinationValidation = validateAddress(params.destination);
-    if (destinationValidation !== ValidationResult.VALID) {
-      throw new InvalidAddressError(params.destination, destinationValidation);
-    }
-    this.operations.push({ kind: OpKind.TRANSFER_TICKET, ...params });
-    return this;
-  }
-
-  /**
-   * Add a RegisterGlobalConstant operation to the batch
-   * @param params RegisterGlobalConstant operation parameter
-   */
-  withRegisterGlobalConstant(params: WalletRegisterGlobalConstantParams) {
-    this.operations.push({ kind: OpKind.REGISTER_GLOBAL_CONSTANT, ...params });
     return this;
   }
 
@@ -143,21 +97,16 @@ export class WalletOperationBatch {
         );
       case OpKind.DELEGATION:
         return this.walletProvider.mapDelegateParamsToWalletParams(async () => param);
-      case OpKind.INCREASE_PAID_STORAGE:
-        return this.walletProvider.mapIncreasePaidStorageWalletParams(async () => param);
-      case OpKind.REGISTER_GLOBAL_CONSTANT:
-        return this.walletProvider.mapRegisterGlobalConstantParamsToWalletParams(async () => param);
-      case OpKind.TRANSFER_TICKET:
-        return this.walletProvider.mapTransferTicketParamsToWalletParams(async () => param);
       default:
-        throw new InvalidOperationKindError(JSON.stringify((param as any).kind));
+        throw new InvalidOperationKindError((param as any).kind);
     }
   }
 
   /**
-   * Add a group operation to the batch. Operation will be applied in the order they are in the params array
+   *
+   * @description Add a group operation to the batch. Operation will be applied in the order they are in the params array
+   *
    * @param params Operations parameter
-   * @throws InvalidOperationKindError
    */
   with(params: WalletParamsWithKind[]) {
     for (const param of params) {
@@ -171,17 +120,8 @@ export class WalletOperationBatch {
         case OpKind.DELEGATION:
           this.withDelegation(param);
           break;
-        case OpKind.INCREASE_PAID_STORAGE:
-          this.withIncreasePaidStorage(param);
-          break;
-        case OpKind.REGISTER_GLOBAL_CONSTANT:
-          this.withRegisterGlobalConstant(param);
-          break;
-        case OpKind.TRANSFER_TICKET:
-          this.withTransferTicket(param);
-          break;
         default:
-          throw new InvalidOperationKindError(JSON.stringify((param as any).kind));
+          throw new InvalidOperationKindError((param as any).kind);
       }
     }
 
@@ -189,7 +129,9 @@ export class WalletOperationBatch {
   }
 
   /**
-   * Submit batch operation to wallet
+   *
+   * @description Submit batch operation to wallet
+   *
    */
   async send() {
     const ops: WalletParamsWithKind[] = [];
@@ -212,10 +154,10 @@ export class Wallet {
   }
 
   private _pkh?: string;
-  private _pk?: string;
 
   /**
-   * Retrieve the PKH of the account that is currently in use by the wallet
+   * @description Retrieve the PKH of the account that is currently in use by the wallet
+   *
    * @param option Option to use while fetching the PKH.
    * If forceRefetch is specified the wallet provider implementation will refetch the PKH from the wallet
    */
@@ -223,19 +165,8 @@ export class Wallet {
     if (!this._pkh || forceRefetch) {
       this._pkh = await this.walletProvider.getPKH();
     }
-    return this._pkh;
-  }
 
-  /**
-   * Retrieve the PK of the account that is currently in use by the wallet
-   * @param option Option to use while fetching the PK.
-   * If forceRefetch is specified the wallet provider implementation will refetch the PK from the wallet
-   */
-  async pk({ forceRefetch }: PKHOption = {}) {
-    if (!this._pk || forceRefetch) {
-      this._pk = await this.walletProvider.getPK();
-    }
-    return this._pk;
+    return this._pkh;
   }
 
   private walletCommand = <T>(send: () => Promise<T>) => {
@@ -245,9 +176,12 @@ export class Wallet {
   };
 
   /**
-   * Originate a new contract according to the script in parameters.
-   * @returns a OriginationWalletOperation promise object when followed by .send()
-   * @param params Originate operation parameter
+   *
+   * @description Originate a new contract according to the script in parameters.
+   *
+   * @returns An operation handle with the result from the rpc node
+   *
+   * @param originateParams Originate operation parameter
    */
   originate<TWallet extends DefaultWalletType = DefaultWalletType>(
     params: WalletOriginateParams<ContractStorageType<TWallet>>
@@ -266,14 +200,16 @@ export class Wallet {
   }
 
   /**
-   * Set the delegate for a contract.
-   * @returns a WalletDelegateParams promise object when followed by .send()
-   * @param params operation parameter
+   *
+   * @description Set the delegate for a contract.
+   *
+   * @returns An operation handle with the result from the rpc node
+   *
+   * @param delegateParams operation parameter
    */
   setDelegate(params: WalletDelegateParams) {
-    const delegateValidation = validateAddress(params.delegate ?? '');
-    if (params.delegate && delegateValidation !== ValidationResult.VALID) {
-      throw new InvalidAddressError(params.delegate, delegateValidation);
+    if (params.delegate && validateAddress(params.delegate) !== ValidationResult.VALID) {
+      throw new InvalidAddressError(params.delegate);
     }
     return this.walletCommand(async () => {
       const mappedParams = await this.walletProvider.mapDelegateParamsToWalletParams(
@@ -285,39 +221,11 @@ export class Wallet {
   }
 
   /**
-   * failing_noop operation that is guaranteed to fail. DISCLAIMER: Not all wallets support signing failing_noop operations.
-   * @returns Signature for a failing_noop
-   * @param params operation parameter
-   */
-  async signFailingNoop(params: WalletFailingNoopParams) {
-    const op: OperationContentsFailingNoop = {
-      kind: OpKind.FAILING_NOOP,
-      arbitrary: params.arbitrary,
-    };
-    const hash = await this.context.readProvider.getBlockHash(params.basedOnBlock);
-    const forgedBytes = await this.context.forger.forge({
-      branch: hash,
-      contents: [op],
-    });
-    const signature = await this.walletProvider.sign(forgedBytes, Uint8Array.from([3]));
-    return {
-      signature,
-      bytes: forgedBytes,
-      signedContent: {
-        branch: hash,
-        contents: [
-          {
-            kind: OpKind.FAILING_NOOP,
-            arbitrary: params.arbitrary,
-          },
-        ],
-      },
-    };
-  }
-
-  /**
-   * Register the current address as delegate.
-   * @returns a DelegationWalletOperation promise object when followed by .send()
+   *
+   * @description Register the current address as delegate.
+   *
+   * @returns An operation handle with the result from the rpc node
+   *
    */
   registerDelegate() {
     return this.walletCommand(async () => {
@@ -331,14 +239,16 @@ export class Wallet {
   }
 
   /**
-   * Transfer tezos tokens from current address to a specific address or call a smart contract.
-   * @returns a TransactionWalletOperation promise object when followed by .send()
+   *
+   * @description Transfer tezos tokens from current address to a specific address or call a smart contract.
+   *
+   * @returns A wallet command from which we can send the operation to the wallet
+   *
    * @param params operation parameter
    */
   transfer(params: WalletTransferParams) {
-    const toValidation = validateAddress(params.to);
-    if (toValidation !== ValidationResult.VALID) {
-      throw new InvalidAddressError(params.to, toValidation);
+    if (validateAddress(params.to) !== ValidationResult.VALID) {
+      throw new InvalidAddressError(params.to);
     }
     return this.walletCommand(async () => {
       const mappedParams = await this.walletProvider.mapTransferParamsToWalletParams(
@@ -350,138 +260,11 @@ export class Wallet {
   }
 
   /**
-   * Transfer tezos tickets from current address to a specific address or a smart contract
-   * @returns a TransferTicketWalletOperation promise object when followed by .send()
-   * @param params operation parameter
-   */
-  transferTicket(params: WalletTransferTicketParams) {
-    const toValidation = validateAddress(params.destination);
-    if (toValidation !== ValidationResult.VALID) {
-      throw new InvalidAddressError(params.destination, toValidation);
-    }
-    return this.walletCommand(async () => {
-      const mappedParams = await this.walletProvider.mapTransferTicketParamsToWalletParams(
-        async () => params
-      );
-
-      const opHash = await this.walletProvider.sendOperations([mappedParams]);
-      return this.context.operationFactory.createTransferTicketOperation(opHash);
-    });
-  }
-
-  /**
-   * Stake a given amount for the source address
-   * @returns a TransactionWalletOperation promise object when followed by .send()
-   * @param params Stake pseudo-operation parameter
-   */
-  stake(params: WalletStakeParams) {
-    return this.walletCommand(async () => {
-      const mappedParams = await this.walletProvider.mapStakeParamsToWalletParams(async () => {
-        const source = await this.pkh();
-        if (!params.to) {
-          params.to = source;
-        }
-        if (params.to !== source) {
-          throw new InvalidStakingAddressError(params.to);
-        }
-        params.parameter = { entrypoint: 'stake', value: { prim: 'Unit' } };
-        return params;
-      });
-      const opHash = await this.walletProvider.sendOperations([mappedParams]);
-      return this.context.operationFactory.createTransactionOperation(opHash);
-    });
-  }
-
-  /**
-   * Unstake the given amount. If "everything" is given as amount, unstakes everything from the staking balance.
-   * Unstaked tez remains frozen for a set amount of cycles (the slashing period) after the operation. Once this period is over,
-   * the operation "finalize unstake" must be called for the funds to appear in the liquid balance.
-   * @returns a TransactionWalletOperation promise object when followed by .send()
-   * @param params Unstake pseudo-operation parameter
-   */
-  unstake(params: WalletUnstakeParams) {
-    return this.walletCommand(async () => {
-      const mappedParams = await this.walletProvider.mapUnstakeParamsToWalletParams(async () => {
-        const source = await this.pkh();
-        if (!params.to) {
-          params.to = source;
-        }
-        if (params.to !== source) {
-          throw new InvalidStakingAddressError(params.to);
-        }
-        params.parameter = { entrypoint: 'unstake', value: { prim: 'Unit' } };
-        return params;
-      });
-      const opHash = await this.walletProvider.sendOperations([mappedParams]);
-      return await this.context.operationFactory.createTransactionOperation(opHash);
-    });
-  }
-
-  /**
-   * Transfer all the finalizable unstaked funds of the source to their liquid balance
-   * @returns a TransactionWalletOperation promise object when followed by .send()
-   * @param params Finalize_unstake pseudo-operation parameter
-   */
-  finalizeUnstake(params: WalletFinalizeUnstakeParams) {
-    return this.walletCommand(async () => {
-      const mappedParams = await this.walletProvider.mapFinalizeUnstakeParamsToWalletParams(
-        async () => {
-          const source = await this.pkh();
-          if (!params.to) {
-            params.to = source;
-          }
-          if (!params.amount) {
-            params.amount = 0;
-          }
-          if (params.amount !== 0) {
-            throw new InvalidFinalizeUnstakeAmountError('Amount must be 0 to finalize unstake.');
-          }
-          params.parameter = { entrypoint: 'finalize_unstake', value: { prim: 'Unit' } };
-          return params;
-        }
-      );
-      const opHash = await this.walletProvider.sendOperations([mappedParams]);
-      return await this.context.operationFactory.createTransactionOperation(opHash);
-    });
-  }
-
-  /**
-   * Increase the paid storage of a smart contract.
-   * @returns a IncreasePaidStorageWalletOperation promise object when followed by .send()
-   * @param params operation parameter
-   */
-  increasePaidStorage(params: WalletIncreasePaidStorageParams) {
-    const destinationValidation = validateAddress(params.destination);
-    if (destinationValidation !== ValidationResult.VALID) {
-      throw new InvalidAddressError(params.destination, destinationValidation);
-    }
-    return this.walletCommand(async () => {
-      const mappedParams = await this.walletProvider.mapIncreasePaidStorageWalletParams(
-        async () => params
-      );
-      const opHash = await this.walletProvider.sendOperations([mappedParams]);
-      return this.context.operationFactory.createIncreasePaidStorageOperation(opHash);
-    });
-  }
-
-  /**
-   * Register a Micheline expression in a global table of constants.
-   * @returns a RegisterGlobalConstantWalletOperation promise object when followed by .send()
-   * @param params operation parameter
-   */
-  registerGlobalConstant(params: WalletRegisterGlobalConstantParams) {
-    return this.walletCommand(async () => {
-      const mappedParams = await this.walletProvider.mapRegisterGlobalConstantParamsToWalletParams(
-        async () => params
-      );
-      const opHash = await this.walletProvider.sendOperations([mappedParams]);
-      return this.context.operationFactory.createRegisterGlobalConstantOperation(opHash);
-    });
-  }
-
-  /**
-   * Create a batch of operation
+   *
+   * @description Create a batch of operation
+   *
    * @returns A batch object from which we can add more operation or send a command to the wallet to execute the batch
+   *
    * @param params List of operation to initialize the batch with
    */
   batch(params?: Parameters<WalletOperationBatch['with']>[0]) {
@@ -495,81 +278,24 @@ export class Wallet {
   }
 
   /**
-   * Create an smart contract abstraction for the address specified. Calling entrypoints with the returned
+   *
+   * @description Create an smart contract abstraction for the address specified. Calling entrypoints with the returned
    * smart contract abstraction will leverage the wallet provider to make smart contract calls
+   *
    * @param address Smart contract address
-   * @throws InvalidContractAddressError If the contract address is not valid
    */
   async at<T extends ContractAbstraction<Wallet>>(
     address: string,
     contractAbstractionComposer: (abs: ContractAbstraction<Wallet>, context: Context) => T = (x) =>
-      x as unknown as T,
-    block: BlockIdentifier = 'head'
+      x as any
   ): Promise<T> {
-    const addressValidation = validateContractAddress(address);
-    if (addressValidation !== ValidationResult.VALID) {
-      throw new InvalidContractAddressError(address, addressValidation);
+    if (validateContractAddress(address) !== ValidationResult.VALID) {
+      throw new InvalidContractAddressError(address);
     }
     const rpc = this.context.withExtensions().rpc;
     const readProvider = this.context.withExtensions().readProvider;
-
-    const loadContractState = async (
-      requestedBlock: BlockIdentifier
-    ): Promise<{ script: ScriptedContracts; entrypoints: EntrypointsResponse }> => {
-      const script = await readProvider.getScript(address, requestedBlock);
-      const entrypoints =
-        requestedBlock === 'head'
-          ? await readProvider.getEntrypoints(address)
-          : await rpc.getEntrypoints(address, { block: String(requestedBlock) });
-
-      return { script, entrypoints };
-    };
-
-    let contractState: { script: ScriptedContracts; entrypoints: EntrypointsResponse };
-
-    try {
-      contractState = await loadContractState(block);
-    } catch (error) {
-      // Newly originated contracts can be visible at the operation's inclusion level in one RPC
-      // call and still lag on another endpoint of the same rolling node. Retry at head so
-      // wallet op.contract() behaves like octez-client, which resolves the originated contract
-      // after confirmation instead of pinning itself to a stale context forever. The head index
-      // can lag briefly as well, so bound a few retries there too.
-      if (block !== 'head' && isNotFoundError(error)) {
-        contractState = await retryOnNotFound(() => loadContractState('head'));
-      } else {
-        throw error;
-      }
-    }
-
-    const abs = new ContractAbstraction(
-      address,
-      contractState.script,
-      this,
-      this.context.contract,
-      contractState.entrypoints,
-      rpc,
-      readProvider,
-      'head'
-    );
-    return contractAbstractionComposer(abs, this.context);
-  }
-
-  async atExactBlock<T extends ContractAbstraction<Wallet>>(
-    address: string,
-    contractAbstractionComposer: (abs: ContractAbstraction<Wallet>, context: Context) => T = (x) =>
-      x as unknown as T,
-    block: BlockIdentifier
-  ): Promise<T> {
-    const addressValidation = validateContractAddress(address);
-    if (addressValidation !== ValidationResult.VALID) {
-      throw new InvalidContractAddressError(address, addressValidation);
-    }
-
-    const rpc = this.context.withExtensions().rpc;
-    const readProvider = this.context.withExtensions().readProvider;
-    const script = await readProvider.getScript(address, block);
-    const entrypoints = await rpc.getEntrypoints(address, { block: String(block) });
+    const script = await readProvider.getScript(address, 'head');
+    const entrypoints = await readProvider.getEntrypoints(address);
     const abs = new ContractAbstraction(
       address,
       script,
@@ -577,10 +303,8 @@ export class Wallet {
       this.context.contract,
       entrypoints,
       rpc,
-      readProvider,
-      block
+      readProvider
     );
-
     return contractAbstractionComposer(abs, this.context);
   }
 }

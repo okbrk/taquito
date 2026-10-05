@@ -1,17 +1,15 @@
 import { MichelsonV1Expression } from '@taquito/rpc';
 import { Schema } from './schema/storage';
 import stringify from 'fast-json-stable-stringify';
-import { TaquitoError } from '@taquito/core';
 
 /**
  *  @category Error
- *  Error that indicates an invalid map type being passed or used
+ *  @description Error that indicates an invalid map type being passed or used
  */
-export class InvalidMapTypeError extends TaquitoError {
-  constructor(public readonly mapType: any, public readonly reason: string) {
-    super();
-    this.message = `The map type '${JSON.stringify(mapType)}' is invalid. Reason: ${reason}.`;
-    this.name = 'InvalidMapTypeError';
+export class InvalidMapTypeError extends Error {
+  public name = 'InvalidMapTypeError';
+  constructor(public mapType: string) {
+    super(`The map type '${mapType}' is invalid`);
   }
 }
 
@@ -19,58 +17,28 @@ export class InvalidMapTypeError extends TaquitoError {
 // Used in order to identify all object that are of type MichelsonMap even if they come from different module
 const michelsonMapTypeSymbol = Symbol.for('taquito-michelson-map-type-symbol');
 
-export type MichelsonMapKey = Array<any> | object | string | boolean | number | null;
+export type MichelsonMapKey = Array<any> | object | string | boolean | number;
 
-/**
- *
- * @throws {@link InvalidMapTypeError} when the argument passed to mapType is not a valid map type
- */
-function validateMapType(value: MichelsonV1Expression): asserts value is {
-  prim: 'map' | 'big_map';
-  args: [MichelsonV1Expression, MichelsonV1Expression];
-} {
-  if (!('prim' in value)) {
-    throw new InvalidMapTypeError(value, `Missing 'prim' field`);
-  }
-  if (!['map', 'big_map'].includes(value.prim)) {
-    throw new InvalidMapTypeError(value, `The prim field should be 'map' or 'big_map'`);
-  }
-  if (!('args' in value)) {
-    throw new InvalidMapTypeError(value, `Missing 'args' field`);
-  }
-  if (!Array.isArray(value.args)) {
-    throw new InvalidMapTypeError(value, `The 'args' field should be an array`);
-  }
-  if (value.args.length !== 2) {
-    throw new InvalidMapTypeError(value, `The 'args' field should have 2 elements`);
-  }
-}
+const isMapType = (
+  value: MichelsonV1Expression
+): value is { prim: 'map' | 'big_map'; args: [MichelsonV1Expression, MichelsonV1Expression] } => {
+  return 'args' in value && Array.isArray(value.args) && value.args.length === 2;
+};
 
 /**
  *  @category Error
- *  Error that indicates a map type mismatch, where an attempt to set a key or value in a Map doesn't match the defined type of the Map
+ *  @description Error that indicates a map type mismatch, where an attempt to set a key or value in a Map doesn't match the defined type of the Map
  */
-export class MapTypecheckError extends TaquitoError {
+export class MapTypecheckError extends Error {
   name = 'MapTypecheckError';
 
-  constructor(
-    public readonly value: any,
-    public readonly type: any,
-    objectType: 'key' | 'value',
-    public readonly reason: any
-  ) {
-    super();
-    this.message = `The ${objectType} provided: ${JSON.stringify(
-      value
-    )} is not compatible with the expected michelson type: ${JSON.stringify(
-      type
-    )}. Reason: ${JSON.stringify(reason)}.`;
-    this.name = 'MapTypecheckError';
+  constructor(public readonly value: any, public readonly type: any, errorType: 'key' | 'value') {
+    super(`${errorType} not compliant with underlying michelson type`);
   }
 }
 
 /**
- * Michelson Map is an abstraction over the michelson native map. It supports complex Pair as key
+ * @description Michelson Map is an abstraction over the michelson native map. It supports complex Pair as key
  */
 export class MichelsonMap<K extends MichelsonMapKey, T> {
   private valueMap = new Map<string, T>();
@@ -100,7 +68,9 @@ export class MichelsonMap<K extends MichelsonMapKey, T> {
   }
 
   setType(mapType: MichelsonV1Expression) {
-    validateMapType(mapType);
+    if (!isMapType(mapType)) {
+      throw new InvalidMapTypeError(mapType.toString());
+    }
 
     this.keySchema = new Schema(mapType.args[0]);
     this.valueSchema = new Schema(mapType.args[1]);
@@ -120,35 +90,31 @@ export class MichelsonMap<K extends MichelsonMapKey, T> {
   }
 
   private typecheckKey(key: K) {
-    if (!this.keySchema) {
-      return;
+    if (this.keySchema) {
+      return this.keySchema.Typecheck(key);
     }
-    if (!this.keySchema.Typecheck(key)) {
-      throw new MapTypecheckError(key, this.keySchema, 'key', 'Type validation failed');
-    }
+
+    return true;
   }
 
   private typecheckValue(value: T) {
-    if (!this.valueSchema) {
-      return;
+    if (this.valueSchema) {
+      return this.valueSchema.Typecheck(value);
     }
-    if (!this.valueSchema.Typecheck(value)) {
-      throw new MapTypecheckError(value, this.valueSchema, 'value', 'Type validation failed');
-    }
+
+    return true;
   }
 
-  /**
-   * @throws {@link MapTypecheckError} when the argument passed does not match the expected schema for value
-   */
   private assertTypecheckValue(value: T) {
-    this.typecheckValue(value);
+    if (!this.typecheckValue(value)) {
+      throw new MapTypecheckError(value, this.valueSchema, 'value');
+    }
   }
 
-  /**
-   * @throws {@link MapTypecheckError} when the argument passed does not match the expected schema for key
-   */
   private assertTypecheckKey(key: K) {
-    this.typecheckKey(key);
+    if (!this.typecheckKey(key)) {
+      throw new MapTypecheckError(key, this.keySchema, 'key');
+    }
   }
 
   private serializeDeterministically(key: K): string {
@@ -183,13 +149,13 @@ export class MichelsonMap<K extends MichelsonMapKey, T> {
 
   /**
    *
-   * Set a key and a value in the MichelsonMap. If the key already exists, override the current value.
+   * @description Set a key and a value in the MichelsonMap. If the key already exists, override the current value.
    *
    * @example map.set("myKey", "myValue") // Using a string as key
    *
    * @example map.set({0: "test", 1: "test1"}, "myValue") // Using a pair as key
    *
-   * @remarks The same key can be represented in multiple ways, depending on the type of the key. This duplicate key situation will cause a runtime error (duplicate key) when sending the map data to the Tezos RPC node.
+   * @warn The same key can be represented in multiple ways, depending on the type of the key. This duplicate key situation will cause a runtime error (duplicate key) when sending the map data to the Tezos RPC node.
    *
    * For example, consider a contract with a map whose key is of type boolean.  If you set the following values in MichelsonMap: map.set(false, "myValue") and map.set(null, "myValue").
    *

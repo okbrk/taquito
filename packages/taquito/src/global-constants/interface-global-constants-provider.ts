@@ -6,7 +6,7 @@ export interface GlobalConstantsProvider {
 
     /**
      *
-     * Retrieve the Michelson value of a global constant based on its hash
+     * @description Retrieve the Michelson value of a global constant based on its hash
      *
      * @param hash a string representing the global constant hash
      */

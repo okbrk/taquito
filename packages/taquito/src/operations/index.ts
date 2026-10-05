@@ -1,23 +1,35 @@
-export * from './types';
+export {
+    OpKind,
+    withKind,
+    ParamsWithKind,
+    RPCOpWithFee,
+    RPCOpWithSource,
+    SourceKinds,
+    GasConsumingOperation,
+    StorageConsumingOperation,
+    FeeConsumingOperation,
+    OriginateParamsBase,
+    OriginateParams,
+    ActivationParams,
+    RPCOriginationOperation,
+    RPCRevealOperation,
+    ForgedBytes,
+    DelegateParams,
+    RegisterDelegateParams,
+    RPCDelegateOperation,
+    TransferParams,
+    RPCTransferOperation,
+    RPCActivateOperation,
+    RPCOperation,
+    PrepareOperationParams
+} from './types';
 export {
   TezosOperationError,
   TezosOperationErrorWithMessage,
   TezosPreapplyFailureError,
-  InvalidEstimateValueError,
-} from './errors';
+} from './operation-errors';
 export { BatchOperation } from './batch-operation';
-export { OriginationOperation } from './origination-operation';
 export { DelegateOperation } from './delegate-operation';
+export { OriginationOperation } from './origination-operation';
 export { TransactionOperation } from './transaction-operation';
-export { RegisterGlobalConstantOperation } from './register-global-constant-operation';
-export { IncreasePaidStorageOperation } from './increase-paid-storage-operation';
-export { TransferTicketOperation } from './transfer-ticket-operation';
-export { UpdateConsensusKeyOperation } from './update-consensus-key-operation';
-export { UpdateCompanionKeyOperation } from './update-companion-key-operation';
-export { SmartRollupAddMessagesOperation } from './smart-rollup-add-messages-operation';
-export { SmartRollupOriginateOperation } from './smart-rollup-originate-operation';
-export { BallotOperation } from './ballot-operation';
-export { DrainDelegateOperation } from './drain-delegate-operation';
-export { ProposalsOperation } from './proposals-operation';
-export { RevealOperation } from './reveal-operation';
 export { Operation } from './operations';

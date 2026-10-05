@@ -2,7 +2,7 @@ import { BaseTokenSchema } from '../schema/types';
 import { SemanticEncoding, Token, TokenFactory } from './token';
 
 export class OperationToken extends Token {
-  static prim: 'operation' = 'operation' as const;
+  static prim: 'operation' = 'operation';
 
   constructor(
     protected val: { prim: string; args: any[]; annots: any[] },
@@ -26,6 +26,14 @@ export class OperationToken extends Token {
       return semantic[OperationToken.prim](val);
     }
     return { string: val };
+  }
+
+  /**
+   * @deprecated ExtractSchema has been deprecated in favor of generateSchema
+   *
+   */
+  public ExtractSchema() {
+    return OperationToken.prim;
   }
 
   generateSchema(): BaseTokenSchema {

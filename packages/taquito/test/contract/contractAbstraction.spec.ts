@@ -1,14 +1,13 @@
 /* eslint-disable @typescript-eslint/ban-types */
 import { Context } from '../../src/context';
 import { ContractAbstraction, MANAGER_LAMBDA } from '../../src/contract';
+import { ContractMethod } from '../../src/contract/contract-methods/contract-method-flat-param';
 import { ContractMethodObject } from '../../src/contract/contract-methods/contract-method-object-param';
 import { RpcContractProvider } from '../../src/contract/rpc-contract-provider';
 import { noAnnotCode } from '../../../../integration-tests/data/token_without_annotation';
 import { genericMultisig } from '../../../../integration-tests/data/multisig';
 import { entrypointsGenericMultisig } from './data';
 import { OnChainView } from '../../src/contract/contract-methods/contract-on-chain-view';
-import { mainContractWithEvents } from '../data/main-contract-with-events';
-import { mainContractWithDuplicateEvents } from '../data/main-contract-with-duplicate-events';
 
 describe('ContractAbstraction test', () => {
   let rpcContractProvider: RpcContractProvider;
@@ -27,9 +26,9 @@ describe('ContractAbstraction test', () => {
     rpcContractProvider = new RpcContractProvider(context, mockEstimate as any);
   });
 
-  describe('Calling the `toTransferParams` method on a `ContractMethodObject` should return the correct value', () => {
-    it('calls the main method of a contract having annotations (genericMultisig where action is change_keys)', async () => {
-      const contractAbs = new ContractAbstraction(
+  describe('Calling the `toTansferParams` method on a `ContractMethod` and a `ContractMethodObject` should return the same value', () => {
+    it('calls the main method of a contract having annotations (genericMultisig where action is change_keys)', async (done) => {
+      const contratcAbs = new ContractAbstraction(
         'contractAddress',
         {
           code: genericMultisig,
@@ -42,7 +41,30 @@ describe('ContractAbstraction test', () => {
         mockReadProvider as any
       );
 
-      const methodObjectMainChangeKeys = contractAbs.methodsObject.main({
+      // Calling the smart contract main method using flat arguments
+      const methodMainChangeKeys = contratcAbs.methods.main(
+        2,
+        'change_keys',
+        2,
+        ['edpkvS5QFv7KRGfa3b87gg9DBpxSm3NpSwnjhUjNBQrRUUR66F7C9g'],
+        [
+          'sigb1FKPeiRgPApxqBMpyBSMpwgnbzhaMcqQcTVwMz82MSzNLBrmRUuVZVgWTBFGcoWQcjTyhfJaxjFtfvB6GGHkfwpxBkFd',
+        ]
+      );
+
+      expect(methodMainChangeKeys).toBeInstanceOf(ContractMethod);
+      expect(methodMainChangeKeys.getSignature()).toEqual([
+        [
+          'nat',
+          'operation',
+          { lambda: { parameters: 'unit', returns: { list: 'operation' } } },
+          { list: 'signature' },
+        ],
+        ['nat', 'change_keys', 'nat', { list: 'key' }, { list: 'signature' }],
+      ]);
+
+      // Calling the smart contract main method using an object as a parameter where the keys are the annotations
+      const methodObjectMainChangeKeys = contratcAbs.methodsObject.main({
         payload: {
           counter: 2,
           action: {
@@ -60,48 +82,28 @@ describe('ContractAbstraction test', () => {
 
       expect(methodObjectMainChangeKeys).toBeInstanceOf(ContractMethodObject);
       expect(methodObjectMainChangeKeys.getSignature()).toEqual({
-        __michelsonType: 'pair',
-        schema: {
-          payload: {
-            __michelsonType: 'pair',
-            schema: {
-              counter: { __michelsonType: 'nat', schema: 'nat' },
-              action: {
-                __michelsonType: 'or',
-                schema: {
-                  change_keys: {
-                    __michelsonType: 'pair',
-                    schema: {
-                      threshold: { __michelsonType: 'nat', schema: 'nat' },
-                      keys: {
-                        __michelsonType: 'list',
-                        schema: { __michelsonType: 'key', schema: 'key' },
-                      },
-                    },
-                  },
-                  operation: {
-                    __michelsonType: 'lambda',
-                    schema: {
-                      parameters: { __michelsonType: 'unit', schema: 'unit' },
-                      returns: {
-                        __michelsonType: 'list',
-                        schema: { __michelsonType: 'operation', schema: 'operation' },
-                      },
-                    },
-                  },
+        payload: {
+          counter: 'nat',
+          action: {
+            change_keys: {
+              threshold: 'nat',
+              keys: { list: 'key' },
+            },
+            operation: {
+              lambda: {
+                parameters: 'unit',
+                returns: {
+                  list: 'operation',
                 },
               },
             },
           },
-          sigs: {
-            __michelsonType: 'list',
-            schema: {
-              __michelsonType: 'option',
-              schema: { __michelsonType: 'signature', schema: 'signature' },
-            },
-          },
         },
+        sigs: { list: 'signature' },
       });
+      expect(methodObjectMainChangeKeys.toTransferParams()).toEqual(
+        methodMainChangeKeys.toTransferParams()
+      );
       expect(methodObjectMainChangeKeys.toTransferParams()).toEqual({
         to: 'contractAddress',
         amount: 0,
@@ -152,10 +154,11 @@ describe('ContractAbstraction test', () => {
           },
         },
       });
+      done();
     });
 
-    it('calls the main method of a contract having annotations (genericMultisig where action is operation)', async () => {
-      const contractAbs = new ContractAbstraction(
+    it('calls the main method of a contract having annotations (genericMultisig where action is operation)', async (done) => {
+      const contratcAbs = new ContractAbstraction(
         'contractAddress',
         {
           code: genericMultisig,
@@ -168,7 +171,20 @@ describe('ContractAbstraction test', () => {
         mockReadProvider as any
       );
 
-      const methodObjectMainoperation = contractAbs.methodsObject.main({
+      // Calling the smart contract main method using flat arguments
+      const methodMainoperation = contratcAbs.methods.main(
+        '2', // Counter
+        'operation', // Sub function
+        MANAGER_LAMBDA.transferImplicit('tz1eY5Aqa1kXDFoiebL28emyXFoneAoVg1zh', 500), // Action
+        [
+          'sigb1FKPeiRgPApxqBMpyBSMpwgnbzhaMcqQcTVwMz82MSzNLBrmRUuVZVgWTBFGcoWQcjTyhfJaxjFtfvB6GGHkfwpxBkFd',
+        ] // Signature list
+      );
+
+      expect(methodMainoperation).toBeInstanceOf(ContractMethod);
+
+      // Calling the smart contract main method using an object as a parameter where the keys are the annotations
+      const methodObjectMainoperation = contratcAbs.methodsObject.main({
         payload: {
           counter: 2,
           action: {
@@ -183,6 +199,9 @@ describe('ContractAbstraction test', () => {
 
       expect(methodObjectMainoperation).toBeInstanceOf(ContractMethodObject);
 
+      expect(methodObjectMainoperation.toTransferParams()).toEqual(
+        methodMainoperation.toTransferParams()
+      );
       expect(methodObjectMainoperation.toTransferParams()).toEqual({
         to: 'contractAddress',
         amount: 0,
@@ -267,10 +286,11 @@ describe('ContractAbstraction test', () => {
           },
         },
       });
+      done();
     });
 
-    it('calls the first entry point (0) of a contract having no annotation', async () => {
-      const contractAbs = new ContractAbstraction(
+    it('calls the first entry point (0) of a contract having no annotation', async (done) => {
+      const contratcAbs = new ContractAbstraction(
         'contractAddress',
         {
           code: noAnnotCode,
@@ -283,21 +303,23 @@ describe('ContractAbstraction test', () => {
         mockReadProvider as any
       );
 
-      const methodObject0 = contractAbs.methodsObject[0]({
+      const method0 = contratcAbs.methods[0](
+        'tz1ZfrERcALBwmAqwonRXYVQBDT9BjNjBHJu',
+        'tz1ZfrERcALBwmAqwonRXYVQBDT9BjNjBHJu',
+        '1'
+      );
+      expect(method0).toBeInstanceOf(ContractMethod);
+      expect(method0.getSignature()).toEqual(['address', 'address', 'nat']);
+
+      const methodObject0 = contratcAbs.methodsObject[0]({
         0: 'tz1ZfrERcALBwmAqwonRXYVQBDT9BjNjBHJu',
         1: 'tz1ZfrERcALBwmAqwonRXYVQBDT9BjNjBHJu',
         2: '1',
       });
       expect(methodObject0).toBeInstanceOf(ContractMethodObject);
-      expect(methodObject0.getSignature()).toEqual({
-        __michelsonType: 'pair',
-        schema: {
-          '0': { __michelsonType: 'address', schema: 'address' },
-          '1': { __michelsonType: 'address', schema: 'address' },
-          '2': { __michelsonType: 'nat', schema: 'nat' },
-        },
-      });
+      expect(methodObject0.getSignature()).toEqual({ 0: 'address', 1: 'address', 2: 'nat' });
 
+      expect(methodObject0.toTransferParams()).toEqual(method0.toTransferParams());
       expect(methodObject0.toTransferParams()).toEqual({
         to: 'contractAddress',
         amount: 0,
@@ -340,10 +362,11 @@ describe('ContractAbstraction test', () => {
           },
         },
       });
+      done();
     });
 
-    it('calls the third entry point (2) of a contract having no annotation', async () => {
-      const contractAbs = new ContractAbstraction(
+    it('calls the third entry point (2) of a contract having no annotation', async (done) => {
+      const contratcAbs = new ContractAbstraction(
         'contractAddress',
         {
           code: noAnnotCode,
@@ -356,13 +379,17 @@ describe('ContractAbstraction test', () => {
         mockReadProvider as any
       );
 
-      const methodObject = contractAbs.methodsObject[2]({
-        0: 'tz1ZfrERcALBwmAqwonRXYVQBDT9BjNjBHJu',
-        1: '1',
-      });
-      expect(methodObject).toBeInstanceOf(ContractMethodObject);
+      const method2 = contratcAbs.methods[2]('tz1ZfrERcALBwmAqwonRXYVQBDT9BjNjBHJu', '1');
+      expect(method2).toBeInstanceOf(ContractMethod);
 
-      expect(methodObject.toTransferParams()).toEqual({
+      const methodObject2 = contratcAbs.methodsObject[2]({
+        2: 'tz1ZfrERcALBwmAqwonRXYVQBDT9BjNjBHJu',
+        3: '1',
+      });
+      expect(methodObject2).toBeInstanceOf(ContractMethodObject);
+
+      expect(methodObject2.toTransferParams()).toEqual(method2.toTransferParams());
+      expect(methodObject2.toTransferParams()).toEqual({
         to: 'contractAddress',
         amount: 0,
         mutez: false,
@@ -401,6 +428,7 @@ describe('ContractAbstraction test', () => {
           },
         },
       });
+      done();
     });
   });
 
@@ -432,8 +460,8 @@ describe('ContractAbstraction test', () => {
       storage: [{ int: '2' }],
     };
 
-    it('populate the contractViews member with a function matching each view name from the script', async () => {
-      const contractAbs = new ContractAbstraction(
+    it('populate the contractViews member with a function matching each view name from the script', async (done) => {
+      const contratcAbs = new ContractAbstraction(
         'contractAddress',
         fakeScriptWithViews,
         rpcContractProvider,
@@ -443,56 +471,15 @@ describe('ContractAbstraction test', () => {
         mockReadProvider as any
       );
 
-      expect(Object.keys(contractAbs.contractViews).length).toEqual(2);
+      expect(Object.keys(contratcAbs.contractViews).length).toEqual(2);
 
-      const viewAdd = contractAbs.contractViews.add();
+      const viewAdd = contratcAbs.contractViews.add();
       expect(viewAdd).toBeInstanceOf(OnChainView);
 
-      const viewId = contractAbs.contractViews.id();
+      const viewId = contratcAbs.contractViews.id();
       expect(viewId).toBeInstanceOf(OnChainView);
-    });
 
-    it('contract events should be extracted properly', async () => {
-      const contractAbs = new ContractAbstraction(
-        'contractAddress',
-        mainContractWithEvents,
-        rpcContractProvider,
-        rpcContractProvider,
-        { entrypoints: {} },
-        mockRpcClient as any,
-        mockReadProvider as any
-      );
-
-      expect(contractAbs.eventSchema.length).toEqual(2);
-
-      expect(contractAbs.eventSchema[0].tag).toEqual('%intFromMainContract');
-      expect(contractAbs.eventSchema[0].type?.prim).toEqual('int');
-
-      expect(contractAbs.eventSchema[1].tag).toEqual('%stringFromMainContract');
-      expect(contractAbs.eventSchema[1].type?.prim).toEqual('string');
-    });
-
-    it('contract events should be extracted properly even if there are duplicates', async () => {
-      const contractAbs = new ContractAbstraction(
-        'contractAddress',
-        mainContractWithDuplicateEvents,
-        rpcContractProvider,
-        rpcContractProvider,
-        { entrypoints: {} },
-        mockRpcClient as any,
-        mockReadProvider as any
-      );
-
-      expect(contractAbs.eventSchema.length).toEqual(3);
-
-      expect(contractAbs.eventSchema[0].tag).toEqual('%tagOneOnlyIntRepeated');
-      expect(contractAbs.eventSchema[0].type?.prim).toEqual('int');
-
-      expect(contractAbs.eventSchema[1].tag).toEqual('%tagTwoIntAndString');
-      expect(contractAbs.eventSchema[1].type?.prim).toEqual('string');
-
-      expect(contractAbs.eventSchema[2].tag).toEqual('%tagTwoIntAndString');
-      expect(contractAbs.eventSchema[2].type?.prim).toEqual('int');
+      done();
     });
   });
 });

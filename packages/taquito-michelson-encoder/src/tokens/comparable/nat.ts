@@ -8,23 +8,15 @@ import {
 import BigNumber from 'bignumber.js';
 import { BaseTokenSchema } from '../../schema/types';
 
-/**
- *  @category Error
- *  Error that indicates a failure happening when parsing encoding/executing Nat
- */
 export class NatValidationError extends TokenValidationError {
   name = 'NatValidationError';
-  constructor(
-    public value: any,
-    public token: NatToken,
-    message: string
-  ) {
+  constructor(public value: any, public token: NatToken, message: string) {
     super(value, token, message);
   }
 }
 
 export class NatToken extends ComparableToken {
-  static prim: 'nat' = 'nat' as const;
+  static prim: 'nat' = 'nat';
 
   constructor(
     protected val: { prim: string; args: any[]; annots: any[] },
@@ -38,46 +30,47 @@ export class NatToken extends ComparableToken {
     return new BigNumber(val[Object.keys(val)[0]]);
   }
 
-  /**
-   * @throws {@link NatValidationError}
-   */
   public Encode(args: any[]): any {
     const val = args.pop();
 
-    this.validate(val);
+    const err = this.isValid(val);
+    if (err) {
+      throw err;
+    }
 
     return { int: new BigNumber(val).toFixed() };
   }
 
-  /**
-   * @throws {@link NatValidationError}
-   */
-  private validate(val: any) {
-    let bigNumber: BigNumber;
-    try {
-      bigNumber = new BigNumber(val);
-    } catch {
-      throw new NatValidationError(val, this, `Value is not a number: ${JSON.stringify(val)}`);
-    }
+  private isValid(val: any): NatValidationError | null {
+    const bigNumber = new BigNumber(val);
     if (bigNumber.isNaN()) {
-      throw new NatValidationError(val, this, `Value is not a number: ${JSON.stringify(val)}`);
-    }
-    if (bigNumber.isNegative()) {
-      throw new NatValidationError(val, this, `Value cannot be negative: ${JSON.stringify(val)}`);
+      return new NatValidationError(val, this, `Value is not a number: ${val}`);
+    } else if (bigNumber.isNegative()) {
+      return new NatValidationError(val, this, `Value cannot be negative: ${val}`);
+    } else {
+      return null;
     }
   }
 
-  /**
-   * @throws {@link NatValidationError}
-   */
   public EncodeObject(val: any, semantic?: SemanticEncoding): any {
-    this.validate(val);
+    const err = this.isValid(val);
+    if (err) {
+      throw err;
+    }
 
     if (semantic && semantic[NatToken.prim]) {
       return semantic[NatToken.prim](val);
     }
 
     return { int: new BigNumber(val).toFixed() };
+  }
+
+  /**
+   * @deprecated ExtractSchema has been deprecated in favor of generateSchema
+   *
+   */
+  public ExtractSchema() {
+    return NatToken.prim;
   }
 
   generateSchema(): BaseTokenSchema {

@@ -25,9 +25,9 @@ describe('Contract abstraction composer test', () => {
 
   beforeEach(() => {
     mockRpcClient = {
-      getContract: vi.fn(),
-      getEntrypoints: vi.fn(),
-      getChainId: vi.fn(),
+      getContract: jest.fn(),
+      getEntrypoints: jest.fn(),
+      getChainId: jest.fn(),
     };
 
     mockRpcClient.getContract.mockResolvedValue({ script });
@@ -41,11 +41,12 @@ describe('Contract abstraction composer test', () => {
     toolkit = new TezosToolkit(mockRpcClient);
   });
 
-  it('Should add a helloWorld method on the contract abstraction', async () => {
+  it('Should add a helloWorld method on the contract abstraction', async (done) => {
     const result = await toolkit.contract.at(
       'KT1Fe71jyjrxFg9ZrYqtvaX7uQjcLo7svE4D',
       composeContractAbstractionTest
     );
     expect(result.constractAbstractionTest().helloWorld()).toEqual('Hello World!');
+    done();
   });
 });

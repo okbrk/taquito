@@ -1,24 +1,18 @@
-import {
-  OperationContentsAndResult,
-  OperationContentsAndResultReveal,
-  OperationContentsReveal,
-} from '@taquito/rpc';
-import { ProhibitedActionError } from '@taquito/core';
-import BigNumberJs from 'bignumber.js';
-type BigNumber = InstanceType<typeof BigNumberJs>;
-const BigNumber = BigNumberJs;
+import { OperationContentsAndResult, OperationContentsAndResultReveal } from '@taquito/rpc';
+import { BigNumber } from 'bignumber.js';
 import { Context } from '../context';
-import { flattenErrors, flattenOperationResult } from './errors';
+import { flattenErrors, flattenOperationResult } from './operation-errors';
 import { Operation } from './operations';
 import {
   FeeConsumingOperation,
   ForgedBytes,
   GasConsumingOperation,
+  RPCRevealOperation,
   StorageConsumingOperation,
 } from './types';
 
 /**
- * Reveal operation provides utility functions to fetch a newly issued revelation
+ * @description Reveal operation provides utility functions to fetch a newly issued revelation
  */
 export class RevealOperation
   extends Operation
@@ -26,7 +20,7 @@ export class RevealOperation
 {
   constructor(
     hash: string,
-    private readonly params: OperationContentsReveal,
+    private readonly params: RPCRevealOperation,
     public readonly source: string,
     raw: ForgedBytes,
     results: OperationContentsAndResult[],
@@ -53,27 +47,19 @@ export class RevealOperation
   }
 
   get fee() {
-    return Number(this.params.fee);
+    return this.params.fee;
   }
 
   get gasLimit() {
-    return Number(this.params.gas_limit);
+    return this.params.gas_limit;
   }
 
   get storageLimit() {
-    return Number(this.params.storage_limit);
+    return this.params.storage_limit;
   }
 
   get publicKey() {
     return this.params.public_key;
-  }
-
-  get proof() {
-    if (this.params.proof) {
-      return this.params.proof;
-    } else {
-      throw new ProhibitedActionError('Only BLS key has proof');
-    }
   }
 
   private sumProp(arr: any[], prop: string) {

@@ -1,12 +1,12 @@
-import { MichelsonMap, TezosToolkit, importKey } from '@taquito/taquito';
-import { InMemorySigner } from '@taquito/signer';
-import { b58Encode, stringToBytes, PrefixV2 } from '@taquito/utils';
+import { MichelsonMap, TezosToolkit } from '@taquito/taquito';
+import { importKey, InMemorySigner } from '@taquito/signer';
+import { b58cencode, char2Bytes, Prefix, prefix } from '@taquito/utils';
 import { fa2TokenFactory } from '../integration-tests/data/fa2-token-factory';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const nodeCrypto = require('crypto');
 
-const provider = 'https://shadownet.tezos.ecadinfra.com';
+const provider = 'https://ghostnet.ecadinfra.com';
 
 async function createAddress() {
   const tezos = new TezosToolkit(provider)
@@ -14,21 +14,21 @@ async function createAddress() {
   const keyBytes = Buffer.alloc(32);
   nodeCrypto.randomFillSync(keyBytes)
 
-  const key = b58Encode(new Uint8Array(keyBytes), PrefixV2.P256SecretKey);
+  const key = b58cencode(new Uint8Array(keyBytes), prefix[Prefix.P2SK]);
   await importKey(tezos, key);
 
   return tezos;
 }
 
 async function example() {
-
+	
     const signer = new InMemorySigner('edskRtmEwZxRzwd1obV9pJzAoLoxXFWTSHbgqpDBRHx1Ktzo5yVuJ37e2R4nzjLnNbxFU4UiBU1iHzAy52pK5YBRpaFwLbByca');
     const tezos = new TezosToolkit(provider);
     tezos.setSignerProvider(signer);
-
+  
   try {
     console.log('Deploying Tzip12BigMapsTokenMetadata contract...');
-
+    
     const LocalTez1 = await createAddress();
 			const localTez1Pkh = await LocalTez1.signer.publicKeyHash();
 			const LocalTez2 = await createAddress();
@@ -51,7 +51,7 @@ async function example() {
 			);
 
 			const url = 'https://storage.googleapis.com/tzip-16/fa2-token-factory.json';
-			const bytesUrl = stringToBytes(url);
+			const bytesUrl = char2Bytes(url);
 			const metadata = new MichelsonMap();
 			metadata.set('', bytesUrl);
 
@@ -69,12 +69,12 @@ async function example() {
 
 			const token_metadata = new MichelsonMap();
 			const token1 = new MichelsonMap();
-			token1.set('name', stringToBytes('wToken'));
-			token1.set('symbol', stringToBytes('wTK'));
+			token1.set('name', char2Bytes('wToken'));
+			token1.set('symbol', char2Bytes('wTK'));
 			token1.set('decimals', '36');
 			const token2 = new MichelsonMap();
-			token2.set('name', stringToBytes('AliceToken'));
-			token2.set('symbol', stringToBytes('ALC'));
+			token2.set('name', char2Bytes('AliceToken'));
+			token2.set('symbol', char2Bytes('ALC'));
 			token2.set('decimals', '30');
 			token_metadata.set('1', {
 				token_id: '1',

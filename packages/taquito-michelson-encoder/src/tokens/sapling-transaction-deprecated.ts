@@ -1,24 +1,15 @@
 import { SaplingTransactionDeprecatedTokenSchema } from '../schema/types';
-import { buf2hex } from '@taquito/utils';
 import { SemanticEncoding, Token, TokenFactory, TokenValidationError } from './token';
 
-/**
- *  @category Error
- *  Error that indicates a failure happening when parsing encoding/executing a Sapling Transaction Deprecated
- */
 export class SaplingTransactionDeprecatedValidationError extends TokenValidationError {
   name = 'SaplingTransactionDeprecatedValidationError';
-  constructor(
-    public value: any,
-    public token: SaplingTransactionDeprecatedToken,
-    message: string
-  ) {
+  constructor(public value: any, public token: SaplingTransactionDeprecatedToken, message: string) {
     super(value, token, message);
   }
 }
 
 export class SaplingTransactionDeprecatedToken extends Token {
-  static prim: 'sapling_transaction_deprecated' = 'sapling_transaction_deprecated' as const;
+  static prim: 'sapling_transaction_deprecated' = 'sapling_transaction_deprecated';
 
   constructor(
     protected val: { prim: string; args: any[]; annots: any[] },
@@ -28,37 +19,25 @@ export class SaplingTransactionDeprecatedToken extends Token {
     super(val, idx, fac);
   }
 
-  /**
-   * @throws {@link SaplingTransactionDeprecatedValidationError}
-   */
   Execute(_val: any) {
     throw new SaplingTransactionDeprecatedValidationError(
       _val,
       this,
-      `There is no literal value for the sapling_transaction_deprecated type. Got: ${JSON.stringify(
-        _val
-      )}.`
+      'There is no literal value for the sapling_transaction_deprecated type.'
     );
   }
 
-  /**
-   * @throws {@link SaplingTransactionDeprecatedValidationError}
-   */
   private validateBytes(val: any) {
     const bytes = /^(0x|0X)?([0-9a-fA-F]*$)/.exec(val);
     if (bytes && bytes[2].length % 2 === 0) {
       return bytes[2];
     } else {
-      throw new SaplingTransactionDeprecatedValidationError(
-        val,
-        this,
-        `Invalid bytes: ${JSON.stringify(val)}`
-      );
+      throw new SaplingTransactionDeprecatedValidationError(val, this, `Invalid bytes: ${val}`);
     }
   }
 
   private convertUint8ArrayToHexString(val: Uint8Array | string) {
-    return val.constructor === Uint8Array ? buf2hex(val) : val;
+    return val.constructor === Uint8Array ? Buffer.from(val).toString('hex') : val;
   }
 
   Encode(args: any[]): any {
@@ -73,6 +52,18 @@ export class SaplingTransactionDeprecatedToken extends Token {
       return semantic[SaplingTransactionDeprecatedToken.prim](val);
     }
     return { bytes: String(val).toString() };
+  }
+
+  /**
+   * @deprecated ExtractSchema has been deprecated in favor of generateSchema
+   *
+   */
+  ExtractSchema() {
+    return {
+      [SaplingTransactionDeprecatedToken.prim]: {
+        'memo-size': Number(this.val.args[0]['int']),
+      },
+    };
   }
 
   generateSchema(): SaplingTransactionDeprecatedTokenSchema {

@@ -1,4 +1,3 @@
-import { TaquitoError } from '@taquito/core';
 import { TicketTokenSchema } from '../schema/types';
 import { IntToken } from './comparable/int';
 import { ContractToken } from './contract';
@@ -6,14 +5,13 @@ import { Token, TokenFactory, Semantic, SemanticEncoding } from './token';
 
 /**
  *  @category Error
- *  Error that indicates a failure when encoding and sending a ticket to the blockchain
+ *  @description Error that indicates a failure when encoding and sending a ticket to the blockchain
  */
-export class EncodeTicketError extends TaquitoError {
+export class EncodeTicketError extends Error {
   name = 'TicketEncodeError';
 
   constructor() {
-    super();
-    this.message = 'Tickets cannot be sent to the blockchain; they are created on-chain';
+    super('Tickets cannot be sent to the blockchain; they are created on-chain');
   }
 }
 
@@ -21,7 +19,7 @@ const ticketerType = { prim: 'contract' };
 const amountType = { prim: 'int' };
 
 export class TicketToken extends Token {
-  static prim: 'ticket' = 'ticket' as const;
+  static prim: 'ticket' = 'ticket';
 
   constructor(
     protected val: { prim: string; args: any[]; annots: any[] },
@@ -35,16 +33,10 @@ export class TicketToken extends Token {
     return this.createToken(this.val.args[0], this.idx);
   }
 
-  /**
-   * @throws {@link EncodeTicketError}
-   */
   public Encode(_args: any[]): any {
     throw new EncodeTicketError();
   }
 
-  /**
-   * @throws {@link EncodeTicketError}
-   */
   public EncodeObject(args: any, semantic?: SemanticEncoding): any {
     if (semantic && semantic[TicketToken.prim]) {
       return semantic[TicketToken.prim](args, this.val);
@@ -72,6 +64,18 @@ export class TicketToken extends Token {
       ticketer: ticketer.Execute(val.args[0], semantics),
       value: value.Execute(val.args[1], semantics),
       amount: amount.Execute(val.args[2], semantics),
+    };
+  }
+
+  /**
+   * @deprecated ExtractSchema has been deprecated in favor of generateSchema
+   *
+   */
+  public ExtractSchema() {
+    return {
+      ticketer: ContractToken.prim,
+      value: this.valueToken.ExtractSchema(),
+      amount: IntToken.prim,
     };
   }
 

@@ -3,7 +3,7 @@ import { Context, Protocols } from '../../src/taquito';
 
 describe('Taquito local forger', () => {
   const mockRpcClient = {
-    getProtocols: vi.fn(),
+    getProtocols: jest.fn(),
   };
 
   beforeEach(() => {
@@ -16,7 +16,7 @@ describe('Taquito local forger', () => {
     expect(new TaquitoLocalForger(new Context('url'))).toBeInstanceOf(TaquitoLocalForger);
   });
 
-  it('should take the protocol hash from context.proto if it is defined', async () => {
+  it('should take the protocol hash from context.proto if it is defined', async (done) => {
     const context = new Context(mockRpcClient as any);
     context.proto = Protocols.PtHangz2;
     const forger = new TaquitoLocalForger(context);
@@ -28,9 +28,11 @@ describe('Taquito local forger', () => {
       contents: [],
     });
     expect(mockRpcClient.getProtocols).toHaveBeenCalledTimes(0);
+
+    done();
   });
 
-  it('should fetch protocol hash from the Rpc', async () => {
+  it('should fetch protocol hash from the Rpc', async (done) => {
     const forger = new TaquitoLocalForger(new Context(mockRpcClient as any));
 
     // When calling the forge method, an instance of LocalForger is created
@@ -41,5 +43,7 @@ describe('Taquito local forger', () => {
       contents: [],
     });
     expect(mockRpcClient.getProtocols).toHaveBeenCalledTimes(1);
+
+    done();
   });
 });

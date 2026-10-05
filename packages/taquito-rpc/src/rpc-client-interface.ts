@@ -1,13 +1,12 @@
-import BigNumberJs from 'bignumber.js';
-type BigNumber = InstanceType<typeof BigNumberJs>;
-const BigNumber = BigNumberJs;
+import { BigNumber } from 'bignumber.js';
 import {
   BakingRightsQueryArguments,
   BakingRightsResponse,
   BalanceResponse,
-  UnstakeRequestsResponse,
   BallotListResponse,
   BallotsResponse,
+  BigMapGetResponse,
+  BigMapKey,
   BigMapResponse,
   BlockHeaderResponse,
   BlockMetadata,
@@ -18,8 +17,8 @@ import {
   CurrentQuorumResponse,
   DelegateResponse,
   DelegatesResponse,
-  AttestationRightsQueryArguments,
-  AttestationRightsResponse,
+  EndorsingRightsQueryArguments,
+  EndorsingRightsResponse,
   EntrypointsResponse,
   ForgeOperationsParams,
   ManagerKeyResponse,
@@ -30,6 +29,7 @@ import {
   ProposalsResponse,
   ProtocolsResponse,
   RPCRunCodeParam,
+  RPCRunOperationParam,
   RPCRunScriptViewParam,
   RPCRunViewParam,
   RunCodeResult,
@@ -38,28 +38,16 @@ import {
   SaplingDiffResponse,
   ScriptResponse,
   StorageResponse,
+  TxRollupInboxResponse,
+  TxRollupStateResponse,
   UnparsingMode,
   VotesListingsResponse,
   VotingInfoResponse,
   VotingPeriodBlockResult,
-  TicketTokenParams,
-  AllTicketBalances,
-  PendingOperationsV2,
-  PendingOperationsQueryArguments,
-  MempoolFilterQueryArguments,
-  MempoolFilterResponse,
-  RPCSimulateOperationParam,
-  AILaunchCycleResponse,
-  AllDelegatesQueryArguments,
-  ProtocolActivationsResponse,
-  ActiveStakingParametersResponse,
-  PendingStakingParametersResponse,
-  DestinationIndexResponse,
 } from './types';
 
 export interface RPCOptions {
   block: string;
-  version?: 1 | '1';
 }
 
 export const defaultChain = 'main';
@@ -69,14 +57,6 @@ export interface RpcClientInterface {
   getBlockHash(options?: RPCOptions): Promise<string>;
   getLiveBlocks(options?: RPCOptions): Promise<string[]>;
   getBalance(address: string, options?: RPCOptions): Promise<BalanceResponse>;
-  getSpendable(address: string, options?: RPCOptions): Promise<BalanceResponse>;
-  getBalanceAndFrozenBonds(address: string, options?: RPCOptions): Promise<BalanceResponse>;
-  getSpendableAndFrozenBonds(address: string, options?: RPCOptions): Promise<BalanceResponse>;
-  getFullBalance(address: string, options?: RPCOptions): Promise<BalanceResponse>;
-  getStakedBalance(address: string, options?: RPCOptions): Promise<BalanceResponse>;
-  getUnstakedFinalizableBalance(address: string, options?: RPCOptions): Promise<BalanceResponse>;
-  getUnstakedFrozenBalance(address: string, options?: RPCOptions): Promise<BalanceResponse>;
-  getUnstakeRequests(address: string, options?: RPCOptions): Promise<UnstakeRequestsResponse>;
   getStorage(address: string, options?: RPCOptions): Promise<StorageResponse>;
   getScript(address: string, options?: RPCOptions): Promise<ScriptResponse>;
   getNormalizedScript(
@@ -87,8 +67,8 @@ export interface RpcClientInterface {
   getContract(address: string, options?: RPCOptions): Promise<ContractResponse>;
   getManagerKey(address: string, options?: RPCOptions): Promise<ManagerKeyResponse>;
   getDelegate(address: string, options?: RPCOptions): Promise<DelegateResponse>;
+  getBigMapKey(address: string, key: BigMapKey, options?: RPCOptions): Promise<BigMapGetResponse>;
   getBigMapExpr(id: string, expr: string, options?: RPCOptions): Promise<BigMapResponse>;
-  getAllDelegates(args: AllDelegatesQueryArguments, options?: RPCOptions): Promise<string[]>;
   getDelegates(address: string, options?: RPCOptions): Promise<DelegatesResponse>;
   getVotingInfo(address: string, options?: RPCOptions): Promise<VotingInfoResponse>;
   getConstants(options?: RPCOptions): Promise<ConstantsResponse>;
@@ -99,10 +79,10 @@ export interface RpcClientInterface {
     args: BakingRightsQueryArguments,
     options?: RPCOptions
   ): Promise<BakingRightsResponse>;
-  getAttestationRights(
-    args: AttestationRightsQueryArguments,
+  getEndorsingRights(
+    args: EndorsingRightsQueryArguments,
     options?: RPCOptions
-  ): Promise<AttestationRightsResponse>;
+  ): Promise<EndorsingRightsResponse>;
   getBallotList(options?: RPCOptions): Promise<BallotListResponse>;
   getBallots(options?: RPCOptions): Promise<BallotsResponse>;
   getCurrentProposal(options?: RPCOptions): Promise<CurrentProposalResponse>;
@@ -113,7 +93,7 @@ export interface RpcClientInterface {
   injectOperation(signedOpBytes: string): Promise<OperationHash>;
   preapplyOperations(ops: PreapplyParams, options?: RPCOptions): Promise<PreapplyResponse[]>;
   getEntrypoints(contract: string, options?: RPCOptions): Promise<EntrypointsResponse>;
-  simulateOperation(op: RPCSimulateOperationParam, options?: RPCOptions): Promise<PreapplyResponse>;
+  runOperation(op: RPCRunOperationParam, options?: RPCOptions): Promise<PreapplyResponse>;
   runCode(code: RPCRunCodeParam, options?: RPCOptions): Promise<RunCodeResult>;
   runScriptView(
     viewScriptParams: RPCRunScriptViewParam,
@@ -131,47 +111,25 @@ export interface RpcClientInterface {
   getSaplingDiffById(id: string, options?: RPCOptions): Promise<SaplingDiffResponse>;
   getSaplingDiffByContract(contract: string, options?: RPCOptions): Promise<SaplingDiffResponse>;
   getProtocols(options?: RPCOptions): Promise<ProtocolsResponse>;
-  getProtocolActivations(protocol?: string): Promise<ProtocolActivationsResponse>;
-  getStorageUsedSpace(contract: string, options?: RPCOptions): Promise<string>;
-  getStoragePaidSpace(contract: string, options?: RPCOptions): Promise<string>;
-  getTicketBalance(
-    contract: string,
-    ticket: TicketTokenParams,
+  getTxRollupState(txRollupId: string, options?: RPCOptions): Promise<TxRollupStateResponse>;
+  getTxRollupInbox(
+    txRollupId: string,
+    blockLevel: string,
     options?: RPCOptions
-  ): Promise<string>;
-  getAllTicketBalances(contract: string, options?: RPCOptions): Promise<AllTicketBalances>;
-  getAdaptiveIssuanceLaunchCycle(options?: RPCOptions): Promise<AILaunchCycleResponse>;
-  getPendingOperations(args: PendingOperationsQueryArguments): Promise<PendingOperationsV2>;
-  getMempoolFilter(args?: MempoolFilterQueryArguments): Promise<MempoolFilterResponse>;
-  getActiveStakingParameters(
-    delegate: string,
-    options?: RPCOptions
-  ): Promise<ActiveStakingParametersResponse>;
-  getPendingStakingParameters(
-    delegate: string,
-    options?: RPCOptions
-  ): Promise<PendingStakingParametersResponse>;
-  getDestinationIndex(destination: string, options?: RPCOptions): Promise<DestinationIndexResponse>;
+  ): Promise<TxRollupInboxResponse | null>;
 }
 
 export enum RPCMethodName {
   GET_BAKING_RIGHTS = 'getBakingRights',
   GET_BALLOTS = 'getBallots',
   GET_BALLOT_LIST = 'getBallotList',
+  GET_BIG_MAP_KEY = 'getBigMapKey',
   GET_BIG_MAP_EXPR = 'getBigMapExpr',
   GET_BLOCK_HASH = 'getBlockHash',
   GET_BLOCK = 'getBlock',
   GET_BLOCK_HEADER = 'getBlockHeader',
   GET_BLOCK_METADATA = 'getBlockMetadata',
   GET_BALANCE = 'getBalance',
-  GET_SPENDABLE = 'getSpendable',
-  GET_BALANCE_AND_FROZEN_BONDS = 'getBalanceAndFrozenBonds',
-  GET_SPENDABLE_AND_FROZEN_BONDS = 'getSpendableAndFrozenBonds',
-  GET_FULL_BALANCE = 'getFullBalance',
-  GET_STAKED_BALANCE = 'getStakedBalance',
-  GET_UNSTAKED_FINALIZABLE_BALANCE = 'getUnstakedFinalizableBalance',
-  GET_UNSTAKED_FROZEN_BALANCE = 'getUnstakedFrozenBalance',
-  GET_UNSTAKE_REQUESTS = 'getUnstakeRequests',
   GET_CHAIN_ID = 'getChainId',
   GET_CONSTANTS = 'getConstants',
   GET_CONTRACT = 'getContract',
@@ -179,12 +137,9 @@ export enum RPCMethodName {
   GET_CURRENT_PROPOSAL = 'getCurrentProposal',
   GET_CURRENT_QUORUM = 'getCurrentQuorum',
   GET_DELEGATE = 'getDelegate',
-  GET_ALL_DELEGATES = 'getAllDelegates',
   GET_DELEGATES = 'getDelegates',
   GET_VOTING_INFO = 'getVotingInfo',
-  GET_ACTIVE_STAKING_PARAMETERS = 'getActiveStakingParameters',
-  GET_PENDING_STAKING_PARAMETERS = 'getPendingStakingParameters',
-  GET_ATTESTATION_RIGHTS = 'getAttestationRights',
+  GET_ENDORSING_RIGHTS = 'getEndorsingRights',
   GET_ENTRYPOINTS = 'getEntrypoints',
   GET_LIVE_BLOCKS = 'getLiveBlocks',
   GET_MANAGER_KEY = 'getManagerKey',
@@ -192,19 +147,12 @@ export enum RPCMethodName {
   GET_PROPOSALS = 'getProposals',
   GET_PROTOCOLS = 'getProtocols',
   GET_SAPLING_DIFF_BY_CONTRACT = 'getSaplingDiffByContract',
-  GET_PROTOCOL_ACTIVATIONS = 'getProtocolActivations',
   GET_SAPLING_DIFF_BY_ID = 'getSaplingDiffById',
   GET_SCRIPT = 'getScript',
   GET_STORAGE = 'getStorage',
   GET_SUCCESSOR_PERIOD = 'getSuccessorPeriod',
+  GET_TX_ROLLUP_INBOX = 'getTxRollupInbox',
+  GET_TX_ROLLUP_STATE = 'getTxRollupState',
   GET_VOTES_LISTINGS = 'getVotesListings',
   PACK_DATA = 'packData',
-  GET_STORAGE_USED_SPACE = 'getStorageUsedSpace',
-  GET_STORAGE_PAID_SPACE = 'getStoragePaidSpace',
-  GET_TICKET_BALANCE = 'getTicketBalance',
-  GET_ALL_TICKET_BALANCES = 'getAllTicketBalances',
-  GET_ADAPTIVE_ISSUANCE_LAUNCH_CYCLE = 'getAdaptiveIssuanceLaunchCycle',
-  GET_PENDING_OPERATIONS = 'getPendingOperations',
-  GET_MEMPOOL_FILTER = 'getMempoolFilter',
-  GET_DESTINATION_INDEX = 'getDestinationIndex',
 }

@@ -8,10 +8,6 @@ import {
 import { validateChain, ValidationResult } from '@taquito/utils';
 import { BaseTokenSchema } from '../schema/types';
 
-/**
- *  @category Error
- *  Error that indicates a failure happening when parsing encoding/executing a ChainID
- */
 export class ChainIDValidationError extends TokenValidationError {
   name = 'ChainIDValidationError';
   constructor(public value: any, public token: ChainIDToken, message: string) {
@@ -20,7 +16,7 @@ export class ChainIDValidationError extends TokenValidationError {
 }
 
 export class ChainIDToken extends ComparableToken {
-  static prim: 'chain_id' = 'chain_id' as const;
+  static prim: 'chain_id' = 'chain_id';
 
   constructor(
     protected val: { prim: string; args: any[]; annots: any[] },
@@ -30,21 +26,24 @@ export class ChainIDToken extends ComparableToken {
     super(val, idx, fac);
   }
 
-  /**
-   * @throws {@link ChainIDValidationError}
-   */
-  private validate(value: any) {
+  private isValid(value: any): ChainIDValidationError | null {
     if (validateChain(value) !== ValidationResult.VALID) {
-      throw new ChainIDValidationError(
-        value,
-        this,
-        `Value ${JSON.stringify(value)} is not a valid ChainID`
-      );
+      return new ChainIDValidationError(value, this, 'ChainID is not valid');
     }
+
+    return null;
   }
 
   public Execute(val: any): string {
     return val[Object.keys(val)[0]];
+  }
+
+  /**
+   * @deprecated ExtractSchema has been deprecated in favor of generateSchema
+   *
+   */
+  public ExtractSchema() {
+    return ChainIDToken.prim;
   }
 
   generateSchema(): BaseTokenSchema {
@@ -54,22 +53,22 @@ export class ChainIDToken extends ComparableToken {
     };
   }
 
-  /**
-   * @throws {@link ChainIDValidationError}
-   */
   public Encode(args: any[]): any {
     const val = args.pop();
 
-    this.validate(val);
+    const err = this.isValid(val);
+    if (err) {
+      throw err;
+    }
 
     return { string: val };
   }
 
-  /**
-   * @throws {@link ChainIDValidationError}
-   */
   public EncodeObject(val: any, semantic?: SemanticEncoding): any {
-    this.validate(val);
+    const err = this.isValid(val);
+    if (err) {
+      throw err;
+    }
 
     if (semantic && semantic[ChainIDToken.prim]) {
       return semantic[ChainIDToken.prim](val);

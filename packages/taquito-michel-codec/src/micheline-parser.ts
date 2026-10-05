@@ -12,41 +12,34 @@ import {
 import { expandMacros } from './macros';
 import { ProtocolOptions } from './michelson-types';
 import { expandGlobalConstants } from './global-constants';
-import { TaquitoError } from '@taquito/core';
 
 /**
  *  @category Error
- *  Error that indicates a failure when parsing Micheline expressions
+ *  @description Error indicating a failure when parsing Micheline expressions
  */
-export class MichelineParseError extends TaquitoError {
+export class MichelineParseError extends Error {
   /**
    * @param token A token caused the error
    * @param message An error message
    */
-  constructor(
-    public readonly token: Token | null,
-    public readonly message: string
-  ) {
-    super();
-    this.name = 'MichelineParseError';
+  constructor(public token: Token | null, message?: string) {
+    super(message);
+    Object.setPrototypeOf(this, MichelineParseError.prototype);
   }
 }
 
 /**
  *  @category Error
- *  Error indicates a failure when parsing Micheline JSON
+ *  @description Error that inidicates a failure when parsing Micheline JSON
  */
-export class JSONParseError extends TaquitoError {
+export class JSONParseError extends Error {
   /**
    * @param node A node caused the error
    * @param message An error message
    */
-  constructor(
-    public readonly node: unknown,
-    public readonly message: string
-  ) {
-    super();
-    this.name = 'JSONParseError';
+  constructor(public node: unknown, message?: string) {
+    super(message);
+    Object.setPrototypeOf(this, JSONParseError.prototype);
   }
 }
 
@@ -103,7 +96,7 @@ export interface ParserOptions extends ProtocolOptions {
  * console.log(emitMicheline(storage, {indent:"    ", newline: "\n",}));
  * ```
  *
- * Encode a Michelson expression for initial storage of a smart contract
+ * Encode a Michelson expression for inital storage of a smart contract
  * ```
  * const src = `(Pair (Pair { Elt 1
  *                (Pair (Pair "tz1gjaF81ZRRvdzjobyfVNsAeSC6PScjfQwN" "tz1KqTpEZ7Yob7QbPE4Hy4Wo8fHG8LhKxZSx")
@@ -419,7 +412,7 @@ export class Parser {
               throw new JSONParseError(a, `string expected: ${a}`);
             }
           }
-          ret.annots = p.annots as string[];
+          ret.annots = p.annots;
         }
 
         if (p.args !== undefined) {

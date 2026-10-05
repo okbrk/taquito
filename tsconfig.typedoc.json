@@ -1,17 +1,9 @@
 {
-  "exclude": [
-    "website",
-    "browser-tests",
-    "integration-tests",
-    "apps",
-    "**/test/**",
-    "**/*.spec.ts",
-    "example/**"
-  ],
+  "exclude": ["website", "integration-tests", "apps"],
   "compilerOptions": {
     "moduleResolution": "node",
     "target": "es6",
-    "module": "es2020",
+    "module": "es2015",
     "lib": [
       "es2015",
       "es2016",
@@ -22,7 +14,6 @@
     "sourceMap": true,
     "declaration": true,
     "allowSyntheticDefaultImports": true,
-    "resolveJsonModule": true,
     "noUnusedParameters": true,
     "noImplicitAny": true,
     "downlevelIteration": true,
@@ -30,6 +21,5 @@
     "emitDecoratorMetadata": true,
     "jsx": "react",
     "skipLibCheck": true,
-    "useUnknownInCatchVariables": false,
   }
 }

@@ -10,19 +10,11 @@ import {
   ProposalsSchema,
   RevealSchema,
   RegisterGlobalConstantSchema,
-  AttestationSchema,
-  AttestationWithDalSchema,
+  EndorsementSchema,
   TransferTicketSchema,
+  TxRollupOriginationSchema,
+  TxRollupSubmitBatchSchema,
   IncreasePaidStorageSchema,
-  UpdateConsensusKeySchema,
-  UpdateCompanionKeySchema,
-  DrainDelegateSchema,
-  SetDepositsLimitSchema,
-  SmartRollupOriginateSchema,
-  SmartRollupAddMessagesSchema,
-  SmartRollupExecuteOutboxMessageSchema,
-  DalPublishCommitmentSchema,
-  FailingNoopSchema,
 } from './schema/operation';
 
 type OperationKind =
@@ -32,21 +24,14 @@ type OperationKind =
   | OpKind.TRANSACTION
   | OpKind.ORIGINATION
   | OpKind.BALLOT
-  | OpKind.ATTESTATION
-  | OpKind.ATTESTATION_WITH_DAL
+  | OpKind.ENDORSEMENT
   | OpKind.SEED_NONCE_REVELATION
   | OpKind.PROPOSALS
   | OpKind.REGISTER_GLOBAL_CONSTANT
   | OpKind.TRANSFER_TICKET
-  | OpKind.INCREASE_PAID_STORAGE
-  | OpKind.UPDATE_CONSENSUS_KEY
-  | OpKind.UPDATE_COMPANION_KEY
-  | OpKind.DRAIN_DELEGATE
-  | OpKind.SET_DEPOSITS_LIMIT
-  | OpKind.SMART_ROLLUP_ORIGINATE
-  | OpKind.SMART_ROLLUP_ADD_MESSAGES
-  | OpKind.SMART_ROLLUP_EXECUTE_OUTBOX_MESSAGE
-  | OpKind.DAL_PUBLISH_COMMITMENT;
+  | OpKind.TX_ROLLUP_ORIGINATION
+  | OpKind.TX_ROLLUP_SUBMIT_BATCH
+  | OpKind.INCREASE_PAID_STORAGE;
 
 const OperationKindMapping = {
   activate_account: ActivationSchema,
@@ -55,22 +40,14 @@ const OperationKindMapping = {
   transaction: TransactionSchema,
   origination: OriginationSchema,
   ballot: BallotSchema,
-  attestation: AttestationSchema,
-  attestation_with_dal: AttestationWithDalSchema,
+  endorsement: EndorsementSchema,
   seed_nonce_revelation: SeedNonceRevelationSchema,
   proposals: ProposalsSchema,
   register_global_constant: RegisterGlobalConstantSchema,
   transfer_ticket: TransferTicketSchema,
+  tx_rollup_origination: TxRollupOriginationSchema,
+  tx_rollup_submit_batch: TxRollupSubmitBatchSchema,
   increase_paid_storage: IncreasePaidStorageSchema,
-  update_consensus_key: UpdateConsensusKeySchema,
-  update_companion_key: UpdateCompanionKeySchema,
-  drain_delegate: DrainDelegateSchema,
-  set_deposits_limit: SetDepositsLimitSchema,
-  smart_rollup_originate: SmartRollupOriginateSchema,
-  smart_rollup_add_messages: SmartRollupAddMessagesSchema,
-  smart_rollup_execute_outbox_message: SmartRollupExecuteOutboxMessageSchema,
-  dal_publish_commitment: DalPublishCommitmentSchema,
-  failing_noop: FailingNoopSchema,
 };
 
 // Asymmetric difference: only account for things in arr2 that are not present in arr1, not vice versa

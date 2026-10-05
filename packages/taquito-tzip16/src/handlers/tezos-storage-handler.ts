@@ -1,13 +1,13 @@
 import { Schema } from '@taquito/michelson-encoder';
 import { Context, ContractAbstraction, ContractProvider, Wallet } from '@taquito/taquito';
 import { Handler, Tzip16Uri } from '../metadata-provider';
-import { bytesToString } from '@taquito/utils';
+import { bytes2Char } from '@taquito/utils';
 import {
-  InvalidContractMetadataTypeError,
-  BigMapContractMetadataNotFoundError,
-  InvalidUriError,
-  ContractMetadataNotFoundError,
-} from '../errors';
+  InvalidMetadataType,
+  BigMapMetadataNotFound,
+  InvalidUri,
+  MetadataNotFound,
+} from '../tzip16-errors';
 
 const typeOfValueToFind = {
   prim: 'big_map',
@@ -27,31 +27,28 @@ export class TezosStorageHandler implements Handler {
   ) {
     const parsedTezosStorageUri = this.parseTezosStorageUri(location);
     if (!parsedTezosStorageUri) {
-      throw new InvalidUriError(`tezos-storage:${location}`);
+      throw new InvalidUri(`tezos-storage:${location}`);
     }
-    const block = contractAbstraction.readBlock;
-    const targetAddress = parsedTezosStorageUri.contractAddress || contractAbstraction.address;
-    const script =
-      !parsedTezosStorageUri.contractAddress && block !== 'head'
-        ? contractAbstraction.script
-        : await context.readProvider.getScript(targetAddress, block);
+    const script = await context.readProvider.getScript(
+      parsedTezosStorageUri.contractAddress || contractAbstraction.address,
+      'head'
+    );
     const bigMapId = Schema.fromRPCResponse({ script }).FindFirstInTopLevelPair<BigMapId>(
       script.storage,
       typeOfValueToFind
     );
 
     if (!bigMapId || !bigMapId.int) {
-      throw new BigMapContractMetadataNotFoundError(bigMapId);
+      throw new BigMapMetadataNotFound();
     }
     const bytes = await context.contract.getBigMapKeyByID<string>(
       bigMapId.int.toString(),
       parsedTezosStorageUri.path,
-      new Schema(typeOfValueToFind),
-      block
+      new Schema(typeOfValueToFind)
     );
 
     if (!bytes) {
-      throw new ContractMetadataNotFoundError(
+      throw new MetadataNotFound(
         `No '${parsedTezosStorageUri.path}' key found in the big map %metadata of the contract ${
           parsedTezosStorageUri.contractAddress || contractAbstraction.address
         }`
@@ -59,13 +56,13 @@ export class TezosStorageHandler implements Handler {
     }
 
     if (!/^[0-9a-fA-F]*$/.test(bytes)) {
-      throw new InvalidContractMetadataTypeError();
+      throw new InvalidMetadataType();
     }
-    return bytesToString(bytes);
+    return bytes2Char(bytes);
   }
 
   /**
-   * Extract the smart contract address, the network and the path pointing to the metadata from the uri
+   * @description Extract the smart contract address, the network and the path pointing to the metadata from the uri
    * @returns an object which contains the properties allowing to find where the metadata are located or it returns undefined if the uri is not valid
    * @param tezosStorageURI URI (without the tezos-storage prefix)
    */

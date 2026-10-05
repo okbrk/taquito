@@ -1,7 +1,7 @@
 # Taquito Beacon Wallet package
 
-_Documentation can be found [here](https://taquito.io/docs/wallet_API)_
-_TypeDoc style documentation is available [here](https://taquito.io/typedoc/modules/_taquito_beacon_wallet.html)_
+_Documentation can be found [here](https://tezostaquito.io/docs/wallet_API)_  
+_TypeDoc style documentation is available [here](https://tezostaquito.io/typedoc/modules/_taquito_beacon_wallet.html)_
 
 ## General Information
 
@@ -25,20 +25,24 @@ import { BeaconWallet } from '@taquito/beacon-wallet';
 
 const options = {
   name: 'MyAwesomeDapp',
-  iconUrl: 'https://taquito.io/img/favicon.svg',
-  network: { type: 'shadownet' },
-  enableMetrics: true,
+  iconUrl: 'https://tezostaquito.io/img/favicon.svg',
+  preferredNetwork: 'chosen_network',
+  eventHandlers: {
+    PERMISSION_REQUEST_SUCCESS: {
+      handler: async (data) => {
+        console.log('permission data:', data);
+      },
+    },
+  },
 };
 const wallet = new BeaconWallet(options);
 
-await wallet.client.subscribeToEvent(
-  BeaconEvent.ACTIVE_ACCOUNT_SET,
-  async (account) => {
-    // An active account has been set, update the dApp UI
-    console.log(`${BeaconEvent.ACTIVE_ACCOUNT_SET} triggered: `, account);
+// The Beacon wallet requires an extra step to set up the network to connect to and the permissions:
+await wallet.requestPermissions({
+  network: {
+    type: 'chosen_network',
   },
-);
-await wallet.requestPermissions();
+});
 
 const Tezos = new TezosToolkit('https://YOUR_PREFERRED_RPC_URL');
 Tezos.setWalletProvider(wallet);

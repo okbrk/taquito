@@ -9,10 +9,6 @@ import {
   TokenValidationError,
 } from './token';
 
-/**
- *  @category Error
- *  Error that indicates a failure happening when parsing encoding/executing a Map
- */
 export class MapValidationError extends TokenValidationError {
   name = 'MapValidationError';
   constructor(public value: any, public token: MapToken, message: string) {
@@ -21,7 +17,7 @@ export class MapValidationError extends TokenValidationError {
 }
 
 export class MapToken extends Token {
-  static prim: 'map' = 'map' as const;
+  static prim: 'map' = 'map';
 
   constructor(
     protected val: { prim: string; args: any[]; annots: any[] },
@@ -39,17 +35,12 @@ export class MapToken extends Token {
     return this.createToken(this.val.args[0], 0) as any;
   }
 
-  /**
-   * @throws {@link MapValidationError}
-   */
-  validate(value: any) {
-    if (!MichelsonMap.isMichelsonMap(value)) {
-      throw new MapValidationError(
-        value,
-        this,
-        `Value ${JSON.stringify(value)} is not a valid MichelsonMap`
-      );
+  private isValid(value: any): MapValidationError | null {
+    if (MichelsonMap.isMichelsonMap(value)) {
+      return null;
     }
+
+    return new MapValidationError(value, this, 'Value must be a MichelsonMap');
   }
 
   public Execute(val: any[], semantics?: Semantic): { [key: string]: any } {
@@ -76,13 +67,13 @@ export class MapToken extends Token {
     return val;
   }
 
-  /**
-   * @throws {@link MapValidationError}
-   */
   public Encode(args: any[]): any {
     const val: MichelsonMap<any, any> = this.objLitToMichelsonMap(args.pop());
 
-    this.validate(val);
+    const err = this.isValid(val);
+    if (err) {
+      throw err;
+    }
 
     return Array.from(val.keys())
       .sort((a: any, b: any) => this.KeySchema.compare(a, b))
@@ -94,13 +85,13 @@ export class MapToken extends Token {
       });
   }
 
-  /**
-   * @throws {@link MapValidationError}
-   */
   public EncodeObject(args: any, semantic?: SemanticEncoding): any {
     const val: MichelsonMap<any, any> = this.objLitToMichelsonMap(args);
 
-    this.validate(val);
+    const err = this.isValid(val);
+    if (err) {
+      throw err;
+    }
 
     if (semantic && semantic[MapToken.prim]) {
       return semantic[MapToken.prim](val);
@@ -114,6 +105,19 @@ export class MapToken extends Token {
           args: [this.KeySchema.EncodeObject(key), this.ValueSchema.EncodeObject(val.get(key))],
         };
       });
+  }
+
+  /**
+   * @deprecated ExtractSchema has been deprecated in favor of generateSchema
+   *
+   */
+  public ExtractSchema() {
+    return {
+      map: {
+        key: this.KeySchema.ExtractSchema(),
+        value: this.ValueSchema.ExtractSchema(),
+      },
+    };
   }
 
   generateSchema(): MapTokenSchema {

@@ -1,8 +1,5 @@
-import { Buffer } from 'buffer';
-import * as sapling from '../sapling-wasm';
-import BigNumberJs from 'bignumber.js';
-type BigNumber = InstanceType<typeof BigNumberJs>;
-const BigNumber = BigNumberJs;
+import * as sapling from '@airgap/sapling-wasm';
+import BigNumber from 'bignumber.js';
 import { hex2buf, mergebuf } from '@taquito/utils';
 import { CommitmentsAndCiphertexts, SaplingDiffResponse } from '@taquito/rpc';
 import blake from 'blakejs';
@@ -11,11 +8,11 @@ import { InMemoryViewingKey } from '../sapling-keys/in-memory-viewing-key';
 import { bufToUint8Array, convertValueToBigNumber, readableFormat } from './helpers';
 import { KDF_KEY, OCK_KEY } from '../constants';
 import { Input, SaplingContractId, SaplingIncomingAndOutgoingTransaction } from '../types';
-import { SaplingTransactionViewerError } from '../errors';
+import { InvalidParameter } from '../error';
 import { TzReadProvider } from '@taquito/taquito';
 
 /**
- * Allows to retrieve and decrypt sapling transactions using on a viewing key
+ * @description Allows to retrieve and decrypt sapling transactions using on a viewing key
  *
  * @param inMemoryViewingKey Holds the sapling viewing key
  * @param saplingContractId Address of the sapling contract or sapling id if the smart contract contains multiple sapling states
@@ -37,7 +34,7 @@ export class SaplingTransactionViewer {
   }
 
   /**
-   * Retrieve the unspent balance associated with the configured viewing key and sapling state
+   * @description Retrieve the unspent balance associated with the configured viewing key and sapling state
    *
    * @returns the balance in mutez represented as a BigNumber
    *
@@ -65,7 +62,7 @@ export class SaplingTransactionViewer {
   }
 
   /**
-   * Retrieve all the incoming and outgoing transactions associated with the configured viewing key.
+   * @description Retrieve all the incoming and outgoing transactions associated with the configured viewing key.
    * The response properties are in Uint8Array format; use the getIncomingAndOutgoingTransactions method for readable properties
    *
    */
@@ -104,7 +101,7 @@ export class SaplingTransactionViewer {
   }
 
   /**
-   * Retrieve all the incoming and outgoing decoded transactions associated with the configured viewing key
+   * @description Retrieve all the incoming and outgoing decoded transactions associated with the configured viewing key
    *
    */
   async getIncomingAndOutgoingTransactions(): Promise<SaplingIncomingAndOutgoingTransaction> {
@@ -131,7 +128,7 @@ export class SaplingTransactionViewer {
         'head'
       );
     } else {
-      throw new SaplingTransactionViewerError(
+      throw new InvalidParameter(
         'A contract address or a sapling id was expected in the SaplingTransactionViewer constructor.'
       );
     }

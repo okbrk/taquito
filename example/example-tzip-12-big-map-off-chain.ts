@@ -1,11 +1,11 @@
-import { MichelsonMap, TezosToolkit, importKey } from '@taquito/taquito';
-import { InMemorySigner } from '@taquito/signer';
+import { MichelsonMap, TezosToolkit } from '@taquito/taquito';
+import { importKey, InMemorySigner } from '@taquito/signer';
 import { fa2ForTokenMetadataView } from '../integration-tests/data/fa2-for-token-metadata-view';
-import { b58Encode, stringToBytes, PrefixV2 } from '@taquito/utils';
+import { b58cencode, char2Bytes, Prefix, prefix } from '@taquito/utils';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const nodeCrypto = require('crypto');
 
-const provider = 'https://shadownet.tezos.ecadinfra.com';
+const provider = 'https://ghostnet.ecadinfra.com';
 
 async function createAddress() {
   const tezos = new TezosToolkit(provider)
@@ -13,7 +13,7 @@ async function createAddress() {
   const keyBytes = Buffer.alloc(32);
   nodeCrypto.randomFillSync(keyBytes)
 
-  const key = b58Encode(new Uint8Array(keyBytes), PrefixV2.P256SecretKey);
+  const key = b58cencode(new Uint8Array(keyBytes), prefix[Prefix.P2SK]);
   await importKey(tezos, key);
 
   return tezos;
@@ -23,10 +23,10 @@ async function example() {
   const tezos = new TezosToolkit(provider)
   const signer = new InMemorySigner('edskRtmEwZxRzwd1obV9pJzAoLoxXFWTSHbgqpDBRHx1Ktzo5yVuJ37e2R4nzjLnNbxFU4UiBU1iHzAy52pK5YBRpaFwLbByca');
   tezos.setSignerProvider(signer);
-
+  
   try {
     console.log('Deploying Tzip12BigMapsOffChain contract...');
-
+    
     const LocalTez1 = await createAddress();
 			const localTez1Pkh = await LocalTez1.signer.publicKeyHash();
 			const LocalTez2 = await createAddress();
@@ -49,7 +49,7 @@ async function example() {
 			);
 
 			const url = 'https://storage.googleapis.com/tzip-16/fa2-views.json';
-			const bytesUrl = stringToBytes(url);
+			const bytesUrl = char2Bytes(url);
 			const metadata = new MichelsonMap();
 			metadata.set('', bytesUrl);
 
@@ -57,15 +57,15 @@ async function example() {
 
 			const tokens = new MichelsonMap();
 			const metadataMap0 = new MichelsonMap();
-			metadataMap0.set('', stringToBytes('https://storage.googleapis.com/tzip-16/token-metadata.json'));
-			metadataMap0.set('name', stringToBytes('Name from URI is prioritized!'));
+			metadataMap0.set('', char2Bytes('https://storage.googleapis.com/tzip-16/token-metadata.json'));
+			metadataMap0.set('name', char2Bytes('Name from URI is prioritized!'));
 			const metadataMap1 = new MichelsonMap();
-			metadataMap1.set('name', stringToBytes('AliceToken'));
-			metadataMap1.set('symbol', stringToBytes('ALC'));
+			metadataMap1.set('name', char2Bytes('AliceToken'));
+			metadataMap1.set('symbol', char2Bytes('ALC'));
 			metadataMap1.set('decimals', '30');
-			metadataMap1.set('extra', stringToBytes('Add more data'));
+			metadataMap1.set('extra', char2Bytes('Add more data'));
 			const metadataMap2 = new MichelsonMap();
-			metadataMap2.set('name', stringToBytes('Invalid token metadata'));
+			metadataMap2.set('name', char2Bytes('Invalid token metadata'));
 			tokens.set('0', {
 				metadata_map: metadataMap0,
 				total_supply: '20000'

@@ -1,24 +1,19 @@
-import {
-  OperationContentsAndResult,
-  OperationContentsAndResultDelegation,
-  OperationContentsDelegation,
-} from '@taquito/rpc';
-import BigNumberJs from 'bignumber.js';
-type BigNumber = InstanceType<typeof BigNumberJs>;
-const BigNumber = BigNumberJs;
+import { OperationContentsAndResult, OperationContentsAndResultDelegation } from '@taquito/rpc';
+import { BigNumber } from 'bignumber.js';
 import { Context } from '../context';
 import { Operation } from './operations';
 import {
   FeeConsumingOperation,
   ForgedBytes,
   GasConsumingOperation,
+  RPCDelegateOperation,
   StorageConsumingOperation,
 } from './types';
 
 /**
- * Delegation operation provide utility function to fetch newly issued delegation
+ * @description Delegation operation provide utility function to fetch newly issued delegation
  *
- * @remarks Currently support only one delegation per operation
+ * @warn Currently support only one delegation per operation
  */
 export class DelegateOperation
   extends Operation
@@ -26,7 +21,7 @@ export class DelegateOperation
 {
   constructor(
     hash: string,
-    private readonly params: OperationContentsDelegation,
+    private readonly params: RPCDelegateOperation,
     public readonly source: string,
     raw: ForgedBytes,
     results: OperationContentsAndResult[],
@@ -56,15 +51,15 @@ export class DelegateOperation
   }
 
   get fee() {
-    return Number(this.params.fee);
+    return this.params.fee;
   }
 
   get gasLimit() {
-    return Number(this.params.gas_limit);
+    return this.params.gas_limit;
   }
 
   get storageLimit() {
-    return Number(this.params.storage_limit);
+    return this.params.storage_limit;
   }
 
   get consumedGas() {

@@ -56,11 +56,8 @@ describe('Bls12-381-g2 token', () => {
 
       try {
         token.Encode(['test']);
-      } catch (ex: unknown) {
-        expect(ex).toBeInstanceOf(Bls12381g2ValidationError);
-        if (ex instanceof Bls12381g2ValidationError) {
-          expect(ex.name).toEqual('Bls12381g2ValidationError');
-        }
+      } catch (ex) {
+        expect(ex.name).toEqual('Bls12381g2ValidationError');
       }
     });
   });
@@ -80,6 +77,8 @@ describe('Bls12-381-g2 token', () => {
 
   describe('ExtractSchema', () => {
     it('test schema', () => {
+      expect(token.ExtractSchema()).toEqual('bls12_381_g2');
+
       expect(token.generateSchema()).toEqual({
         __michelsonType: 'bls12_381_g2',
         schema: 'bls12_381_g2'

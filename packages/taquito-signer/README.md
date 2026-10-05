@@ -1,6 +1,6 @@
 # Taquito Signer package
-*Documentation can be found [here](https://taquito.io/docs/inmemory_signer)*
-*TypeDoc style documentation is available on-line [here](https://taquito.io/typedoc/modules/_taquito_signer.html)*
+*Documentation can be found [here](https://tezostaquito.io/docs/inmemory_signer)*  
+*TypeDoc style documentation is available on-line [here](https://tezostaquito.io/typedoc/modules/_taquito_signer.html)*
 
 `@taquito/signer` is an npm package that provides developers with signing functionality for Taquito.
 
@@ -13,7 +13,7 @@ This signer implementation is for development workflows.
 **Storing private keys in memory is suitable for development workflows but risky for
 production use-cases! Use the InMemorySigner appropriately given your risk profile.**
 
-## Install
+## Install 
 ```
 npm i --save @taquito/taquito
 npm i --save @taquito/signer
@@ -45,7 +45,7 @@ Tezos.setProvider({
 });
 ```
 
-The following link can be used to fund an address on the different testnets: https://teztnets.com/.
+The following link can be used to fund an address on the different testnets: https://teztnets.xyz/.
 
 ## Additional info
 

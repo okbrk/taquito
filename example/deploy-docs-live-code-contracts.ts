@@ -25,14 +25,11 @@ import {
   metadataViewsExample1,
   metadataViewsExample2,
 } from '../integration-tests/data/metadataViews';
-import { saplingLiveCodeContract } from './data/sapling_live_code_contract';
 import { contractMap8pairs } from './data/contractMap8pairs';
-import { stringToBytes } from '@taquito/utils';
+import { char2Bytes } from '@taquito/utils';
 import { fa2Contract } from '../integration-tests/data/fa2_contract';
-import BigNumber from 'bignumber.js';
 
-
-const provider = 'https://shadownet.tezos.ecadinfra.com/';
+const provider = 'https://kathmandunet.ecadinfra.com/';
 export const signer = new InMemorySigner(
   'edskRtmEwZxRzwd1obV9pJzAoLoxXFWTSHbgqpDBRHx1Ktzo5yVuJ37e2R4nzjLnNbxFU4UiBU1iHzAy52pK5YBRpaFwLbByca'
 );
@@ -103,8 +100,8 @@ async function checkBalances(users: string | any[]) {
   console.log('checking funds of users...');
   try {
     for (let i = 0; i < users.length; i++) {
-      const user_balance = await tezos.tz.getBalance(users[i]);
-      if (user_balance < BigNumber(min_balance)) {
+      const user_balance: any = await tezos.tz.getBalance(users[i]);
+      if (user_balance < min_balance) {
         low_balance.push(users[i]);
       }
       console.log(users[i], user_balance);
@@ -136,7 +133,6 @@ async function originateTheContracts() {
   await checkBalances(users);
 
   console.log('originating...');
-  contract_catalogue.set('SaplingLiveCodeContract', await originateSaplingLiveCodeContract());
   contract_catalogue.set('IncrementContract', await originateIncrementContract());
   contract_catalogue.set('MichelsonMapContract', await originateMichelsonMap());
   contract_catalogue.set('LambdaViewContract', await originateLambda1());
@@ -145,7 +141,7 @@ async function originateTheContracts() {
     'MapWithWithSingleMapForStorage',
     await originateMapWithSingleMapForStorage()
   );
-  contract_catalogue.set('MapWithPairAsMapContract', await originateMapWithPairAsMapKeys());
+  contract_catalogue.set('MapWithPairasMapContract', await originateMapWithPairasMapKeys());
   contract_catalogue.set('MapWithComplexKeysContract', await originateMapWithComplexKeys());
   contract_catalogue.set(
     'MapWithInitialStorageContract',
@@ -169,7 +165,6 @@ async function originateTheContracts() {
   contract_catalogue.set('WalletAreYouThereContract', await originateWalletOriginateAreYouThere());
   contract_catalogue.set('BigMapPackContract', await originateBigMapPackContract());
 
-
   json_contract_catalogue();
 
   function json_contract_catalogue() {
@@ -180,21 +175,6 @@ async function originateTheContracts() {
       jsonObject[key] = value;
     });
     console.log(JSON.stringify(jsonObject));
-  }
-}
-
-async function originateSaplingLiveCodeContract() {
-  tezos.setSignerProvider(signer);
-  try {
-    const op = await tezos.contract.originate({
-      code: saplingLiveCodeContract,
-      init: `{}`,
-    });
-    const sapling_live_code_contract = await op.contract();
-    console.log('SaplingLiveCodeContract : ' + sapling_live_code_contract.address);
-    return sapling_live_code_contract.address;
-  } catch (ex) {
-    console.error(ex);
   }
 }
 
@@ -301,7 +281,7 @@ async function originateLambda2() {
   }
 }
 
-async function originateMapWithPairAsMapKeys() {
+async function originateMapWithPairasMapKeys() {
   tezos.setSignerProvider(signer);
   try {
     const storageMap = new MichelsonMap();
@@ -578,13 +558,13 @@ async function originateTzip16Storage() {
       description: 'A metadata test',
       version: '0.1',
       license: 'MIT',
-      authors: ['Taquito <https://taquito.io/>'],
-      homepage: 'https://taquito.io/',
+      authors: ['Taquito <https://tezostaquito.io/>'],
+      homepage: 'https://tezostaquito.io/',
     };
 
     const metadataBigMap = new MichelsonMap();
-    metadataBigMap.set('', stringToBytes('tezos-storage:here'));
-    metadataBigMap.set('here', stringToBytes(JSON.stringify(metadataJSON)));
+    metadataBigMap.set('', char2Bytes('tezos-storage:here'));
+    metadataBigMap.set('here', char2Bytes(JSON.stringify(metadataJSON)));
 
     const tacoShopStorageMap = new MichelsonMap();
 
@@ -608,7 +588,7 @@ async function originateTzip16Https() {
   tezos.setSignerProvider(signer);
   try {
     const url = 'https://storage.googleapis.com/tzip-16/taco-shop-metadata.json';
-    const bytesUrl = stringToBytes(url);
+    const bytesUrl = char2Bytes(url);
 
     const metadataBigMap = new MichelsonMap();
     metadataBigMap.set('', bytesUrl);
@@ -640,7 +620,7 @@ async function originateTzip16SHA256() {
     );
     const metadataSha256 = '0x7e99ecf3a4490e3044ccdf319898d77380a2fc20aae36b6e40327d678399d17b';
     const url = 'sha256://' + metadataSha256 + '/https:' + urlPercentEncoded;
-    const bytesUrl = stringToBytes(url);
+    const bytesUrl = char2Bytes(url);
 
     const metadataBigMap = new MichelsonMap();
     metadataBigMap.set('', bytesUrl);
@@ -668,7 +648,7 @@ async function originateTzip16IPFS() {
   tezos.setSignerProvider(signer);
   try {
     const uri = 'ipfs://QmXnASUptTDnfhmcoznFqz3S1Mxu7X1zqo2YwbTN3nW52V';
-    const bytesUrl = stringToBytes(uri);
+    const bytesUrl = char2Bytes(uri);
 
     const metadataBigMap = new MichelsonMap();
     metadataBigMap.set('', bytesUrl);
@@ -695,8 +675,8 @@ async function originateTzip16OnChainJSON() {
   tezos.setSignerProvider(signer);
   try {
     const metadataBigMAp = new MichelsonMap();
-    metadataBigMAp.set('', stringToBytes('tezos-storage:here'));
-    metadataBigMAp.set('here', stringToBytes(JSON.stringify(metadataViewsExample1)));
+    metadataBigMAp.set('', char2Bytes('tezos-storage:here'));
+    metadataBigMAp.set('here', char2Bytes(JSON.stringify(metadataViewsExample1)));
 
     const op = await tezos.contract.originate({
       code: contractCode,
@@ -718,8 +698,8 @@ async function originateTzip16OnChainMultiply() {
   tezos.setSignerProvider(signer);
   try {
     const metadataBigMAp = new MichelsonMap();
-    metadataBigMAp.set('', stringToBytes('tezos-storage:here'));
-    metadataBigMAp.set('here', stringToBytes(JSON.stringify(metadataViewsExample2)));
+    metadataBigMAp.set('', char2Bytes('tezos-storage:here'));
+    metadataBigMAp.set('here', char2Bytes(JSON.stringify(metadataViewsExample2)));
 
     const op = await tezos.contract.originate({
       code: contractCode,

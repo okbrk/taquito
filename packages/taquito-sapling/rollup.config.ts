@@ -1,8 +1,7 @@
+import sourceMaps from 'rollup-plugin-sourcemaps';
 import camelCase from 'lodash.camelcase';
 import typescript from 'rollup-plugin-typescript2';
-import json from '@rollup/plugin-json';
-import resolve from '@rollup/plugin-node-resolve';
-import commonjs from '@rollup/plugin-commonjs';
+import json from 'rollup-plugin-json';
 
 const pkg = require('./package.json');
 
@@ -11,37 +10,15 @@ const libraryName = 'taquito-sapling';
 export default {
   input: `src/${libraryName}.ts`,
   output: [
-    { 
-      file: pkg.main, 
-      name: camelCase(libraryName), 
-      format: 'umd', 
-      sourcemap: true, 
-      globals: {
-        "bignumber.js": "BigNumber",
-        "@taquito/taquito": "taquito",
-        "@taquito/utils": "utils",
-        "@taquito/core": "core",
-        "@taquito/sapling-wasm": "sapling",
-        "blakejs": "blake",
-        "@stablelib/nacl": "nacl",
-        "@stablelib/random": "random",
-        "typedarray-to-buffer": "toBuffer",
-      }
-    },
+    { file: pkg.main, name: camelCase(libraryName), format: 'umd', sourcemap: true },
     { file: pkg.module, format: 'es', sourcemap: true },
   ],
   // Indicate here external modules you don't wanna include in your bundle (i.e.: 'lodash')
   external: [
     'typedarray-to-buffer',
     'blakejs',
-    '@taquito/core',
-    '@taquito/utils',
-    'bignumber.js',
-    '@taquito/sapling-wasm',
-    '@stablelib/nacl',
-    'bip39',
-    '@stablelib/random',
-    '@taquito/taquito'
+    '../saplingOutputParams',
+    '../saplingSpendParams'
   ],
   watch: {
     include: 'src/**',
@@ -49,10 +26,10 @@ export default {
   plugins: [
     // Allow json resolution
     json(),
-    // Resolve node_modules (needed for @scure/bip39)
-    resolve({ preferBuiltins: false }),
-    commonjs(),
     // Compile TypeScript files
     typescript({ tsconfig: './tsconfig.prod.json', useTsconfigDeclarationDir: true }),
+
+    // Resolve source maps to the original source
+    sourceMaps()
   ],
 };

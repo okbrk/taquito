@@ -1,5 +1,6 @@
-import { ForgedBytes, TransactionOperation } from '@taquito/taquito';
+import { ForgedBytes } from '../../src/operations/types';
 import { OperationContentsAndResult } from '@taquito/rpc';
+import { TransactionOperation } from '../../src/operations/transaction-operation';
 import { defaultConfigConfirmation } from '../../src/context';
 import { TransferOperationBuilder, RevealOperationBuilder } from '../helpers';
 
@@ -82,7 +83,7 @@ describe('Transfer operation', () => {
   beforeEach(() => {
     fakeContext = {
       rpc: {
-        getBlock: vi.fn(),
+        getBlock: jest.fn(),
       },
       config: { ...defaultConfigConfirmation },
     };

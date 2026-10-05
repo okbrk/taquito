@@ -6,13 +6,13 @@ import {
   ContractProvider,
   Wallet,
 } from '@taquito/taquito';
-import { bytesToString } from '@taquito/utils';
+import { bytes2Char } from '@taquito/utils';
 import { MetadataEnvelope, MetadataProviderInterface } from './metadata-provider';
 import {
-  BigMapContractMetadataNotFoundError,
-  UnconfiguredContractMetadataProviderError,
-  UriNotFoundError,
-} from './errors';
+  BigMapMetadataNotFound,
+  UnconfiguredMetadataProviderError,
+  UriNotFound,
+} from './tzip16-errors';
 import BigNumber from 'bignumber.js';
 import { Schema } from '@taquito/michelson-encoder';
 import { ViewFactory } from './viewKind/viewFactory';
@@ -43,21 +43,18 @@ export class Tzip16ContractAbstraction {
 
   private async findMetadataBigMap(): Promise<BigMapAbstraction> {
     const metadataBigMapId = this.constractAbstraction.schema.FindFirstInTopLevelPair<BigMapId>(
-      this.constractAbstraction.readBlock === 'head'
-        ? await this.context.readProvider.getStorage(this.constractAbstraction.address, 'head')
-        : this.constractAbstraction.script.storage,
+      await this.context.readProvider.getStorage(this.constractAbstraction.address, 'head'),
       metadataBigMapType
     );
 
     if (!metadataBigMapId || !metadataBigMapId.int) {
-      throw new BigMapContractMetadataNotFoundError(metadataBigMapId);
+      throw new BigMapMetadataNotFound();
     }
 
     return new BigMapAbstraction(
       new BigNumber(metadataBigMapId['int']),
       new Schema(metadataBigMapType),
-      this.context.contract,
-      this.constractAbstraction.readBlock
+      this.context.contract
     );
   }
 
@@ -65,23 +62,23 @@ export class Tzip16ContractAbstraction {
     const metadataBigMap = await this.findMetadataBigMap();
     const uri = await metadataBigMap.get<string>('');
     if (!uri) {
-      throw new UriNotFoundError();
+      throw new UriNotFound();
     }
     return uri;
   }
 
   /**
-   * Return an object containing the metadata, the uri, an optional integrity check result and an optional sha256 hash
+   * @description Return an object containing the metadata, the uri, an optional integrity check result and an optional sha256 hash
    */
   async getMetadata() {
     if (!this._metadataProvider) {
-      throw new UnconfiguredContractMetadataProviderError();
+      throw new UnconfiguredMetadataProviderError();
     }
     if (!this._metadataEnvelope) {
       const uri = await this.getUriOrFail();
       this._metadataEnvelope = await this._metadataProvider.provideMetadata(
         this.constractAbstraction,
-        bytesToString(uri),
+        bytes2Char(uri),
         this.context
       );
     }

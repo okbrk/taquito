@@ -5,33 +5,18 @@ import {
   TokenValidationError,
   SemanticEncoding,
 } from '../token';
-import {
-  b58DecodeAddress,
-  compareArrays,
-  encodeAddress,
-  splitAddress,
-  validateAddress,
-  ValidationResult,
-} from '@taquito/utils';
+import { b58decode, encodePubKey, validateAddress, ValidationResult } from '@taquito/utils';
 import { BaseTokenSchema } from '../../schema/types';
 
-/**
- *  @category Error
- *  Error that indicates a failure happening when parsing encoding/executing an Address
- */
 export class AddressValidationError extends TokenValidationError {
   name = 'AddressValidationError';
-  constructor(
-    public value: any,
-    public token: AddressToken,
-    message: string
-  ) {
+  constructor(public value: any, public token: AddressToken, message: string) {
     super(value, token, message);
   }
 }
 
 export class AddressToken extends ComparableToken {
-  static prim: 'address' = 'address' as const;
+  static prim: 'address' = 'address';
 
   constructor(
     protected val: { prim: string; args: any[]; annots: any[] },
@@ -42,45 +27,37 @@ export class AddressToken extends ComparableToken {
   }
 
   public ToBigMapKey(val: any) {
-    const decoded = b58DecodeAddress(val);
+    const decoded = b58decode(val);
     return {
       key: { bytes: decoded },
       type: { prim: 'bytes' },
     };
   }
 
-  /**
-   * @throws {@link AddressValidationError}
-   */
-  private validate(value: unknown) {
-    if (typeof value !== 'string') {
-      throw new AddressValidationError(value, this, 'Type error');
-    }
+  private isValid(value: any): AddressValidationError | null {
     if (validateAddress(value) !== ValidationResult.VALID) {
-      throw new AddressValidationError(
-        value,
-        this,
-        `Address is not valid: ${JSON.stringify(value)}`
-      );
+      return new AddressValidationError(value, this, `Address is not valid: ${value}`);
     }
+
+    return null;
   }
 
-  /**
-   * @throws {@link AddressValidationError}
-   */
   public Encode(args: any[]): any {
     const val = args.pop();
 
-    this.validate(val);
+    const err = this.isValid(val);
+    if (err) {
+      throw err;
+    }
 
     return { string: val };
   }
 
-  /**
-   * @throws {@link AddressValidationError}
-   */
   public EncodeObject(val: any, semantic?: SemanticEncoding): any {
-    this.validate(val);
+    const err = this.isValid(val);
+    if (err) {
+      throw err;
+    }
 
     if (semantic && semantic[AddressToken.prim]) {
       return semantic[AddressToken.prim](val);
@@ -89,9 +66,6 @@ export class AddressToken extends ComparableToken {
     return { string: val };
   }
 
-  /**
-   * @throws {@link AddressValidationError}
-   */
   public Execute(val: { bytes: string; string: string }): string {
     if (val.string) {
       return val.string;
@@ -100,11 +74,19 @@ export class AddressToken extends ComparableToken {
       throw new AddressValidationError(
         val,
         this,
-        `cannot be missing both string and bytes: ${JSON.stringify(val)}`
+        `cannot be missing both string and bytes: ${val}`
       );
     }
 
-    return encodeAddress(val.bytes);
+    return encodePubKey(val.bytes);
+  }
+
+  /**
+   * @deprecated ExtractSchema has been deprecated in favor of generateSchema
+   *
+   */
+  public ExtractSchema() {
+    return AddressToken.prim;
   }
 
   generateSchema(): BaseTokenSchema {
@@ -114,9 +96,6 @@ export class AddressToken extends ComparableToken {
     };
   }
 
-  /**
-   * @throws {@link AddressValidationError}
-   */
   public ToKey({ bytes, string }: any) {
     if (string) {
       return string;
@@ -125,29 +104,25 @@ export class AddressToken extends ComparableToken {
       throw new AddressValidationError(
         { bytes, string },
         this,
-        `cannot be missing both string and bytes ${JSON.stringify({ string, bytes })}`
+        `cannot be missing both string and bytes ${{ string, bytes }}`
       );
     }
 
-    return encodeAddress(bytes);
+    return encodePubKey(bytes);
   }
-
   compare(address1: string, address2: string) {
-    const [addr1, endpoint1] = splitAddress(address1);
-    const [addr2, endpoint2] = splitAddress(address2);
-    const ep1 = endpoint1 || '';
-    const ep2 = endpoint2 || '';
+    const isImplicit = (address: string) => {
+      return address.startsWith('tz');
+    };
+    const implicit1 = isImplicit(address1);
+    const implicit2 = isImplicit(address2);
 
-    // binary type tag actually reflects the expected prefix order
-    const bytes1 = b58DecodeAddress(addr1, 'array');
-    const bytes2 = b58DecodeAddress(addr2, 'array');
-
-    const res = compareArrays(bytes1, bytes2);
-    if (res === 0) {
-      return ep1 < ep2 ? -1 : ep1 > ep2 ? 1 : 0;
-    } else {
-      return res;
+    if (implicit1 && !implicit2) {
+      return -1;
+    } else if (implicit2 && !implicit1) {
+      return 1;
     }
+    return super.compare(address1, address2);
   }
 
   findAndReturnTokens(tokenToFind: string, tokens: Token[]) {

@@ -1,7 +1,7 @@
 import { ContractAbstraction, ContractProvider, Wallet, Context } from '@taquito/taquito';
 import { MetadataInterface } from './metadata-interface';
 import { MetadataContext } from './tzip16-contract-abstraction';
-import { InvalidContractMetadataError, InvalidUriError, ProtocolNotSupportedError } from './errors';
+import { InvalidMetadata, InvalidUri, ProtocolNotSupported } from './tzip16-errors';
 import { calculateSHA256Hash } from './tzip16-utils';
 
 export interface MetadataProviderInterface {
@@ -32,20 +32,19 @@ export interface Tzip16Uri {
   location: string;
 }
 
-const SHA256_PREFIX = 'sha256://0x';
-const SUPPORTED_PROTOCOLS = new Set(['http', 'https', 'ipfs', 'tezos-storage']);
-
 /**
- \* Metadata Provider
+ * @description: Metadata Provider
  */
 export class MetadataProvider implements MetadataProviderInterface {
+  private readonly PROTOCOL_REGEX = /(?:sha256:\/\/0x(.*)\/)?(https?|ipfs|tezos-storage):(.*)/;
+
   constructor(private handlers: Map<string, Handler>) {}
 
   /**
-   * Fetch the metadata by using the appropriate handler based on the protcol found in the URI
+   * @description Fetch the metadata by using the appropriate handler based on the protcol found in the URI
    * @returns an object which contains the uri, the metadata, an optional integrity check result and an optional SHA256 hash
-   * @param contractAbstraction the contract abstraction which contains the URI in its storage
-   * @param uri the decoded uri found in the storage
+   * @param _contractAbstraction the contract abstraction which contains the URI in its storage
+   * @param _uri the decoded uri found in the storage
    * @param context the TezosToolkit Context
    */
   async provideMetadata(
@@ -55,12 +54,12 @@ export class MetadataProvider implements MetadataProviderInterface {
   ): Promise<MetadataEnvelope> {
     const uriInfo = this.extractProtocolInfo(uri);
     if (!uriInfo || !uriInfo.location) {
-      throw new InvalidUriError(uri);
+      throw new InvalidUri(uri);
     }
 
     const handler = this.handlers.get(uriInfo.protocol);
     if (!handler) {
-      throw new ProtocolNotSupportedError(uriInfo.protocol);
+      throw new ProtocolNotSupported(uriInfo.protocol);
     }
 
     const metadata = await handler.getMetadata(contractAbstraction, uriInfo, context);
@@ -69,7 +68,7 @@ export class MetadataProvider implements MetadataProviderInterface {
     try {
       metadataJSON = JSON.parse(metadata);
     } catch (ex) {
-      throw new InvalidContractMetadataError(metadata);
+      throw new InvalidMetadata(metadata);
     }
 
     return {
@@ -81,33 +80,12 @@ export class MetadataProvider implements MetadataProviderInterface {
   }
 
   private extractProtocolInfo(_uri: string) {
-    let uri = _uri;
-    let sha256hash: string | undefined;
-
-    if (uri.startsWith(SHA256_PREFIX)) {
-      const sha256EndIndex = uri.indexOf('/', SHA256_PREFIX.length);
-      if (sha256EndIndex === -1) {
-        return;
-      }
-
-      sha256hash = uri.slice(SHA256_PREFIX.length, sha256EndIndex);
-      uri = uri.slice(sha256EndIndex + 1);
-    }
-
-    const protocolSeparatorIndex = uri.indexOf(':');
-    if (protocolSeparatorIndex === -1) {
-      return;
-    }
-
-    const protocol = uri.slice(0, protocolSeparatorIndex);
-    if (!SUPPORTED_PROTOCOLS.has(protocol)) {
-      return;
-    }
-
+    const extractor = this.PROTOCOL_REGEX.exec(_uri);
+    if (!extractor) return;
     return {
-      sha256hash,
-      protocol,
-      location: uri.slice(protocolSeparatorIndex + 1),
+      sha256hash: extractor[1],
+      protocol: extractor[2],
+      location: extractor[3],
     };
   }
 }

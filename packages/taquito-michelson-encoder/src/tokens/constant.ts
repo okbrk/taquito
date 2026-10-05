@@ -1,10 +1,6 @@
 import { ConstantTokenSchema } from '../schema/types';
 import { Semantic, SemanticEncoding, Token, TokenFactory, TokenValidationError } from './token';
 
-/**
- *  @category Error
- *  Error that indicates a failure happening when parsing encoding a Global Constant
- */
 export class GlobalConstantEncodingError extends TokenValidationError {
   name = 'GlobalConstantEncodingError';
   constructor(public value: any, public token: GlobalConstantToken, message: string) {
@@ -12,10 +8,6 @@ export class GlobalConstantEncodingError extends TokenValidationError {
   }
 }
 
-/**
- *  @category Error
- *  Error that indicates a failure happening when parsing executing a Global Constant
- */
 export class GlobalConstantDecodingError extends TokenValidationError {
   name = 'GlobalConstantDecodingError';
   constructor(public value: any, public token: GlobalConstantToken, message: string) {
@@ -24,7 +16,7 @@ export class GlobalConstantDecodingError extends TokenValidationError {
 }
 
 export class GlobalConstantToken extends Token {
-  static prim: 'constant' = 'constant' as const;
+  static prim: 'constant' = 'constant';
 
   constructor(
     protected val: { prim: string; args: any[]; annots?: any[] },
@@ -34,9 +26,6 @@ export class GlobalConstantToken extends Token {
     super(val, idx, fac);
   }
 
-  /**
-   * @throws {@link GlobalConstantDecodingError}
-   */
   public Execute(val: any, semantic?: Semantic) {
     if (semantic && semantic[GlobalConstantToken.prim]) {
       return semantic[GlobalConstantToken.prim](val as any, this.val);
@@ -49,9 +38,6 @@ export class GlobalConstantToken extends Token {
     }
   }
 
-  /**
-   * @throws {@link GlobalConstantEncodingError}
-   */
   public Encode(args: any[]): any {
     throw new GlobalConstantEncodingError(
       args,
@@ -60,9 +46,6 @@ export class GlobalConstantToken extends Token {
     );
   }
 
-  /**
-   * @throws {@link GlobalConstantEncodingError}
-   */
   public EncodeObject(val: any, semantic?: SemanticEncoding): any {
     if (semantic && semantic[GlobalConstantToken.prim]) {
       return semantic[GlobalConstantToken.prim](val);
@@ -72,6 +55,14 @@ export class GlobalConstantToken extends Token {
       this,
       `Unable to encode a script containing global constants. Please provide an expanded script to the Michelson-Encoder. The following global constant hash was encountered: ${this.val.args[0]['string']}.`
     );
+  }
+
+  /**
+   * @deprecated ExtractSchema has been deprecated in favor of generateSchema
+   *
+   */
+  public ExtractSchema() {
+    return GlobalConstantToken.prim;
   }
 
   generateSchema(): ConstantTokenSchema {

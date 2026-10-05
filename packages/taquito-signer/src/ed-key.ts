@@ -1,65 +1,52 @@
-import { blake2b } from '@noble/hashes/blake2.js';
-import { ed25519 } from '@noble/curves/ed25519';
+import { hash } from '@stablelib/blake2b';
+import { generateKeyPairFromSeed, sign } from '@stablelib/ed25519';
 import {
-  PrefixV2,
-  b58DecodeAndCheckPrefix,
-  b58Encode,
-  InvalidPublicKeyError,
-  compareArrays,
+  b58cencode,
+  b58cdecode,
+  prefix,
+  buf2hex,
+  isValidPrefix,
+  InvalidKeyError,
 } from '@taquito/utils';
-import { SigningKey, PublicKey } from './key-interface';
-import { RawSignResult } from '@taquito/core';
-
-interface KeyPair {
-  secretKey: Uint8Array;
-  publicKey: Uint8Array;
-}
-
-function generateKeyPairFromSeed(seed: Uint8Array): KeyPair {
-  const publicKey = ed25519.getPublicKey(seed);
-  const secretKey = new Uint8Array(64);
-  secretKey.set(seed);
-  secretKey.set(publicKey, 32);
-  return { secretKey, publicKey };
-}
+import toBuffer from 'typedarray-to-buffer';
 
 /**
- * Provide signing logic for ed25519 curve based key (tz1)
+ * @description Provide signing logic for ed25519 curve based key (tz1)
  */
-export class EdKey implements SigningKey {
-  #keyPair: KeyPair;
+export class Tz1 {
+  private _key: Uint8Array;
+  private _publicKey: Uint8Array;
+  private isInit: Promise<boolean>;
 
   /**
    *
    * @param key Encoded private key
    * @param encrypted Is the private key encrypted
    * @param decrypt Decrypt function
-   * @throws InvalidKeyError
    */
-  constructor(key: string, decrypt?: (k: Uint8Array) => Uint8Array) {
-    const tmp = b58DecodeAndCheckPrefix(key, [
-      PrefixV2.Ed25519SecretKey,
-      PrefixV2.Ed25519EncryptedSeed,
-      PrefixV2.Ed25519Seed,
-    ]);
-    let [keyData] = tmp;
-    const [, prefix] = tmp;
-
-    if (prefix === PrefixV2.Ed25519SecretKey) {
-      this.#keyPair = {
-        secretKey: keyData,
-        publicKey: keyData.slice(32),
-      };
-    } else {
-      if (prefix === PrefixV2.Ed25519EncryptedSeed) {
-        if (decrypt !== undefined) {
-          keyData = decrypt(keyData);
-        } else {
-          throw new Error('decryption function is not provided');
-        }
-      }
-      this.#keyPair = generateKeyPairFromSeed(keyData);
+  constructor(private key: string, encrypted: boolean, decrypt: (k: any) => any) {
+    const keyPrefix = key.substr(0, encrypted ? 5 : 4);
+    if (!isValidPrefix(keyPrefix)) {
+      throw new InvalidKeyError(key, 'Key contains invalid prefix');
     }
+
+    this._key = decrypt(b58cdecode(this.key, prefix[keyPrefix]));
+    this._publicKey = this._key.slice(32);
+
+    if (!this._key) {
+      throw new InvalidKeyError(key, 'Unable to decode');
+    }
+
+    this.isInit = this.init();
+  }
+
+  private async init() {
+    if (this._key.length !== 64) {
+      const { publicKey, secretKey } = generateKeyPairFromSeed(new Uint8Array(this._key));
+      this._publicKey = publicKey;
+      this._key = secretKey;
+    }
+    return true;
   }
 
   /**
@@ -67,69 +54,45 @@ export class EdKey implements SigningKey {
    * @param bytes Bytes to sign
    * @param bytesHash Blake2b hash of the bytes to sign
    */
-  sign(bytes: Uint8Array): RawSignResult {
-    const hash = blake2b(bytes, { dkLen: 32 });
-    const seed = this.#keyPair.secretKey.subarray(0, 32);
-    const signature = ed25519.sign(hash, seed);
+  async sign(bytes: string, bytesHash: Uint8Array) {
+    await this.isInit;
+    const signature = sign(new Uint8Array(this._key), new Uint8Array(bytesHash));
+    const signatureBuffer = toBuffer(signature);
+    const sbytes = bytes + buf2hex(signatureBuffer);
 
     return {
-      rawSignature: signature,
-      sig: b58Encode(signature, PrefixV2.GenericSignature),
-      prefixSig: b58Encode(signature, PrefixV2.Ed25519Signature),
+      bytes,
+      sig: b58cencode(signature, prefix.sig),
+      prefixSig: b58cencode(signature, prefix.edsig),
+      sbytes,
     };
   }
 
   /**
    * @returns Encoded public key
    */
-  publicKey(): PublicKey {
-    return new EdPublicKey(this.#keyPair.publicKey);
+  async publicKey(): Promise<string> {
+    await this.isInit;
+    return b58cencode(this._publicKey, prefix['edpk']);
+  }
+
+  /**
+   * @returns Encoded public key hash
+   */
+  async publicKeyHash(): Promise<string> {
+    await this.isInit;
+    return b58cencode(hash(new Uint8Array(this._publicKey), 20), prefix.tz1);
   }
 
   /**
    * @returns Encoded private key
    */
-  secretKey(): string {
-    return b58Encode(this.#keyPair.secretKey, PrefixV2.Ed25519SecretKey);
-  }
-}
+  async secretKey(): Promise<string> {
+    await this.isInit;
+    let key = this._key;
+    const { secretKey } = generateKeyPairFromSeed(new Uint8Array(key).slice(0, 32));
+    key = toBuffer(secretKey);
 
-export class EdPublicKey implements PublicKey {
-  #key: Uint8Array;
-
-  constructor(src: string | Uint8Array) {
-    if (typeof src === 'string') {
-      const [key, _] = b58DecodeAndCheckPrefix(src, [PrefixV2.Ed25519PublicKey]);
-      this.#key = key;
-    } else {
-      this.#key = src;
-    }
-  }
-
-  compare(other: PublicKey): number {
-    if (other instanceof EdPublicKey) {
-      return compareArrays(this.bytes(), other.bytes());
-    } else {
-      throw new InvalidPublicKeyError('EdDSA key expected');
-    }
-  }
-
-  hash(): string {
-    return b58Encode(blake2b(this.#key, { dkLen: 20 }), PrefixV2.Ed25519PublicKeyHash);
-  }
-
-  bytes(): Uint8Array {
-    return this.#key;
-  }
-
-  toProtocol(): Uint8Array {
-    const res = new Uint8Array(this.#key.length + 1);
-    res[0] = 0;
-    res.set(this.#key, 1);
-    return res;
-  }
-
-  toString(): string {
-    return b58Encode(this.#key, PrefixV2.Ed25519PublicKey);
+    return b58cencode(key, prefix[`edsk`]);
   }
 }

@@ -16,7 +16,6 @@ export enum CODEC {
   ZARITH = 'zarith',
   PUBLIC_KEY = 'public_key',
   PKH = 'pkh',
-  PKH_ARR = 'pkhArr',
   DELEGATE = 'delegate',
   SCRIPT = 'script',
   BALLOT_STATEMENT = 'ballotStmt',
@@ -27,11 +26,7 @@ export enum CODEC {
   PARAMETERS = 'parameters',
   ADDRESS = 'address',
   SMART_CONTRACT_ADDRESS = 'smart_contract_address',
-  SMART_ROLLUP_ADDRESS = 'smart_rollup_address',
-  SMART_ROLLUP_COMMITMENT_HASH = 'smart_rollup_commitment_hash',
   VALUE = 'value',
-  PADDED_BYTES = 'padded_bytes',
-  SMART_ROLLUP_MESSAGE = 'smart_rollup_message',
   MANAGER = 'manager',
   BLOCK_PAYLOAD_HASH = 'blockPayloadHash',
   ENTRYPOINT = 'entrypoint',
@@ -41,31 +36,22 @@ export enum CODEC {
   OP_TRANSACTION = 'transaction',
   OP_ORIGINATION = 'origination',
   OP_BALLOT = 'ballot',
-  OP_FAILING_NOOP = 'failing_noop',
-  OP_ATTESTATION = 'attestation',
-  OP_ATTESTATION_WITH_DAL = 'attestation_with_dal',
+  OP_ENDORSEMENT = 'endorsement',
   OP_SEED_NONCE_REVELATION = 'seed_nonce_revelation',
   OP_REVEAL = 'reveal',
   OP_PROPOSALS = 'proposals',
   OP_REGISTER_GLOBAL_CONSTANT = 'register_global_constant',
   OP_TRANSFER_TICKET = 'transfer_ticket',
+  OP_TX_ROLLUP_ORIGINATION = 'tx_rollup_origination',
+  OP_TX_ROLLUP_SUBMIT_BATCH = 'tx_rollup_submit_batch',
   BURN_LIMIT = 'burn_limit',
+  TX_ROLLUP_ORIGINATION_PARAM = 'tx_rollup_origination_param',
+  TX_ROLLUP_ID = 'tx_rollup_id',
+  TX_ROLLUP_BATCH_CONTENT = 'tx_rollup_batch_content',
   OP_INCREASE_PAID_STORAGE = 'increase_paid_storage',
-  OP_UPDATE_CONSENSUS_KEY = 'update_consensus_key',
-  OP_UPDATE_COMPANION_KEY = 'update_companion_key',
-  SIGNATURE_PROOF = 'signature_proof',
-  OP_DRAIN_DELEGATE = 'drain_delegate',
-  DEPOSITS_LIMIT = 'deposits_limit',
-  OP_SET_DEPOSITS_LIMIT = 'set_deposits_limit',
-  OP_SMART_ROLLUP_ORIGINATE = 'smart_rollup_originate',
-  PVM_KIND = 'pvm_kind',
-  OP_SMART_ROLLUP_ADD_MESSAGES = 'smart_rollup_add_messages',
-  OP_SMART_ROLLUP_EXECUTE_OUTBOX_MESSAGE = 'smart_rollup_execute_outbox_message',
-  OP_DAL_PUBLISH_COMMITMENT = 'dal_publish_commitment',
-  SLOT_HEADER = 'slot_header',
 }
 
-// See https://tezos.gitlab.io/shell/p2p_api.html#alpha-michelson-v1-primitives-enumeration-unsigned-8-bit-integer
+// See https://tezos.gitlab.io/whitedoc/michelson.html#full-grammar
 export const opMapping: { [key: string]: string } = {
   '00': 'parameter',
   '01': 'storage',
@@ -203,7 +189,7 @@ export const opMapping: { [key: string]: string } = {
   '85': 'SAPLING_EMPTY_STATE',
   '86': 'SAPLING_VERIFY_UPDATE',
   '87': 'ticket',
-  '88': 'TICKET_DEPRECATED',
+  '88': 'TICKET',
   '89': 'READ_TICKET',
   '8a': 'SPLIT_TICKET',
   '8b': 'JOIN_TICKETS',
@@ -219,15 +205,6 @@ export const opMapping: { [key: string]: string } = {
   '95': 'MIN_BLOCK_TIME',
   '96': 'sapling_transaction',
   '97': 'EMIT',
-  '98': 'Lambda_rec',
-  '99': 'LAMBDA_REC',
-  '9a': 'TICKET',
-  '9b': 'BYTES',
-  '9c': 'NAT',
-  '9d': 'Ticket',
-  '9e': 'IS_IMPLICIT_ACCOUNT',
-  '9f': 'INDEX_ADDRESS',
-  'a0': 'GET_ADDRESS_INDEX',
 };
 
 export const opMappingReverse = (() => {
@@ -238,7 +215,7 @@ export const opMappingReverse = (() => {
   return result;
 })();
 
-// See https://tezos.gitlab.io/shell/p2p_api.html
+// See https://tezos.gitlab.io/api/p2p.html
 export const kindMapping: { [key: number]: string } = {
   0x04: 'activate_account',
   0x6b: 'reveal',
@@ -246,22 +223,14 @@ export const kindMapping: { [key: number]: string } = {
   0x6c: 'transaction',
   0x6d: 'origination',
   0x06: 'ballot',
-  0x15: 'attestation',
-  0x17: 'attestation_with_dal',
+  0x15: 'endorsement',
   0x01: 'seed_nonce_revelation',
   0x05: 'proposals',
   0x6f: 'register_global_constant',
+  0x96: 'tx_rollup_origination',
+  0x97: 'tx_rollup_submit_batch',
   0x9e: 'transfer_ticket',
-  0x70: 'set_deposits_limit',
   0x71: 'increase_paid_storage',
-  0x72: 'update_consensus_key',
-  0x73: 'update_companion_key',
-  0x09: 'drain_delegate',
-  0xc8: 'smart_rollup_originate',
-  0xc9: 'smart_rollup_add_messages',
-  0xce: 'smart_rollup_execute_outbox_message',
-  0xe6: 'dal_publish_commitment',
-  0x11: 'failing_noop',
 };
 
 export const kindMappingReverse = (() => {
@@ -280,11 +249,6 @@ export const entrypointMapping: { [key: string]: string } = {
   '02': 'do',
   '03': 'set_delegate',
   '04': 'remove_delegate',
-  '05': 'deposit',
-  '06': 'stake',
-  '07': 'unstake',
-  '08': 'finalize_unstake',
-  '09': 'set_delegate_parameters',
 };
 
 export const entrypointMappingReverse = (() => {

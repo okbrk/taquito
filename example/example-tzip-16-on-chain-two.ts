@@ -1,10 +1,10 @@
 import { MichelsonMap, TezosToolkit } from '@taquito/taquito';
 import { InMemorySigner } from '@taquito/signer';
 import { contractCode, metadataViewsExample2 } from '../integration-tests/data/metadataViews';
-import { stringToBytes } from '@taquito/utils';
+import { char2Bytes } from '@taquito/utils';
 
 async function example() {
-  const provider = 'https://shadownet.tezos.ecadinfra.com';
+  const provider = 'https://ghostnet.ecadinfra.com';
   const signer = new InMemorySigner('edskRtmEwZxRzwd1obV9pJzAoLoxXFWTSHbgqpDBRHx1Ktzo5yVuJ37e2R4nzjLnNbxFU4UiBU1iHzAy52pK5YBRpaFwLbByca');
   const tezos = new TezosToolkit(provider);
   tezos.setSignerProvider(signer);
@@ -13,8 +13,8 @@ async function example() {
     console.log('Deploying Tzip16OffChainTwo contract...');
 
     const metadataBigMAp = new MichelsonMap();
-    metadataBigMAp.set("", stringToBytes('tezos-storage:here'));
-    metadataBigMAp.set("here", stringToBytes(JSON.stringify(metadataViewsExample2)))
+    metadataBigMAp.set("", char2Bytes('tezos-storage:here'));
+    metadataBigMAp.set("here", char2Bytes(JSON.stringify(metadataViewsExample2)))
 
     const op = await tezos.contract.originate({
       code: contractCode,

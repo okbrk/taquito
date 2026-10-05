@@ -1,10 +1,6 @@
 import { ListTokenSchema } from '../schema/types';
 import { Token, TokenFactory, Semantic, TokenValidationError, SemanticEncoding } from './token';
 
-/**
- *  @category Error
- *  Error that indicates a failure happening when parsing encoding/executing a List
- */
 export class ListValidationError extends TokenValidationError {
   name = 'ListValidationError';
   constructor(public value: any, public token: ListToken, message: string) {
@@ -13,7 +9,7 @@ export class ListValidationError extends TokenValidationError {
 }
 
 export class ListToken extends Token {
-  static prim: 'list' = 'list' as const;
+  static prim: 'list' = 'list';
 
   constructor(
     protected val: { prim: string; args: any[]; annots: any[] },
@@ -27,26 +23,21 @@ export class ListToken extends Token {
     return this.createToken(this.val.args[0], this.idx);
   }
 
-  /**
-   * @throws {@link ListValidationError}
-   */
-  private validate(value: any) {
-    if (!Array.isArray(value)) {
-      throw new ListValidationError(
-        value,
-        this,
-        `Value ${JSON.stringify(value)} is not a valid array`
-      );
+  private isValid(value: any): ListValidationError | null {
+    if (Array.isArray(value)) {
+      return null;
     }
+
+    return new ListValidationError(value, this, 'Value must be an array');
   }
 
-  /**
-   * @throws {@link ListValidationError}
-   */
   public Encode(args: any[]): any {
     const val = args.pop();
 
-    this.validate(val);
+    const err = this.isValid(val);
+    if (err) {
+      throw err;
+    }
 
     const schema = this.createToken(this.val.args[0], 0);
     return val.reduce((prev: any, current: any) => {
@@ -54,26 +45,26 @@ export class ListToken extends Token {
     }, []);
   }
 
-  /**
-   * @throws {@link ListValidationError}
-   */
   public Execute(val: any, semantics?: Semantic) {
     const schema = this.createToken(this.val.args[0], 0);
 
-    this.validate(val);
+    const err = this.isValid(val);
+    if (err) {
+      throw err;
+    }
 
     return val.reduce((prev: any, current: any) => {
       return [...prev, schema.Execute(current, semantics)];
     }, []);
   }
 
-  /**
-   * @throws {@link ListValidationError}
-   */
   public EncodeObject(args: any, semantic?: SemanticEncoding): any {
     const schema = this.createToken(this.val.args[0], 0);
 
-    this.validate(args);
+    const err = this.isValid(args);
+    if (err) {
+      throw err;
+    }
 
     if (semantic && semantic[ListToken.prim]) {
       return semantic[ListToken.prim](args);
@@ -82,6 +73,16 @@ export class ListToken extends Token {
     return args.reduce((prev: any, current: any) => {
       return [...prev, schema.EncodeObject(current)];
     }, []);
+  }
+
+  /**
+   * @deprecated ExtractSchema has been deprecated in favor of generateSchema
+   *
+   */
+  public ExtractSchema() {
+    return {
+      [ListToken.prim]: this.valueSchema.ExtractSchema(),
+    };
   }
 
   generateSchema(): ListTokenSchema {

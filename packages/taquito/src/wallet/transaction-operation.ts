@@ -7,7 +7,6 @@ import {
   OperationContentsAndResultReveal,
   OperationContentsAndResultTransaction,
 } from '@taquito/rpc';
-import { ObservableError } from './errors';
 
 export class TransactionWalletOperation extends WalletOperation {
   constructor(
@@ -20,21 +19,14 @@ export class TransactionWalletOperation extends WalletOperation {
 
   public async revealOperation() {
     const operationResult = await this.operationResults();
-    if (!operationResult) {
-      throw new ObservableError('operationResult returned undefined');
-    }
-
-    return operationResult.find((x) => x.kind === OpKind.REVEAL) as
+    return operationResult.find(x => x.kind === OpKind.REVEAL) as
       | OperationContentsAndResultReveal
       | undefined;
   }
 
   public async transactionOperation() {
     const operationResult = await this.operationResults();
-    if (!operationResult) {
-      throw new ObservableError('operationResult returned undefined');
-    }
-    return operationResult.find((x) => x.kind === OpKind.TRANSACTION) as
+    return operationResult.find(x => x.kind === OpKind.TRANSACTION) as
       | OperationContentsAndResultTransaction
       | undefined;
   }

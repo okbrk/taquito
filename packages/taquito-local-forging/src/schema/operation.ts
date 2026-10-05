@@ -1,12 +1,12 @@
 import { Decoder } from '../decoder';
 import { Uint8ArrayConsumer } from '../uint8array-consumer';
 import { CODEC, kindMapping, kindMappingReverse } from '../constants';
-import { InvalidOperationKindError } from '@taquito/core';
+import { InvalidOperationKindError } from '@taquito/utils';
 import {
   OperationDecodingError,
   OperationEncodingError,
   UnsupportedOperationError,
-} from '../errors';
+} from '../error';
 
 export const ManagerOperationSchema = {
   branch: CODEC.BRANCH,
@@ -25,7 +25,6 @@ export const RevealSchema = {
   gas_limit: CODEC.ZARITH,
   storage_limit: CODEC.ZARITH,
   public_key: CODEC.PUBLIC_KEY,
-  proof: CODEC.SIGNATURE_PROOF,
 };
 
 export const DelegationSchema = {
@@ -66,19 +65,11 @@ export const BallotSchema = {
   ballot: CODEC.BALLOT_STATEMENT,
 };
 
-export const AttestationSchema = {
+export const EndorsementSchema = {
   slot: CODEC.INT16,
   level: CODEC.INT32,
   round: CODEC.INT32,
   block_payload_hash: CODEC.BLOCK_PAYLOAD_HASH,
-};
-
-export const AttestationWithDalSchema = {
-  slot: CODEC.INT16,
-  level: CODEC.INT32,
-  round: CODEC.INT32,
-  block_payload_hash: CODEC.BLOCK_PAYLOAD_HASH,
-  dal_attestation: CODEC.ZARITH,
 };
 
 export const SeedNonceRevelationSchema = {
@@ -115,6 +106,26 @@ export const TransferTicketSchema = {
   entrypoint: CODEC.ENTRYPOINT,
 };
 
+export const TxRollupOriginationSchema = {
+  source: CODEC.PKH,
+  fee: CODEC.ZARITH,
+  counter: CODEC.ZARITH,
+  gas_limit: CODEC.ZARITH,
+  storage_limit: CODEC.ZARITH,
+  tx_rollup_origination: CODEC.TX_ROLLUP_ORIGINATION_PARAM,
+};
+
+export const TxRollupSubmitBatchSchema = {
+  source: CODEC.PKH,
+  fee: CODEC.ZARITH,
+  counter: CODEC.ZARITH,
+  gas_limit: CODEC.ZARITH,
+  storage_limit: CODEC.ZARITH,
+  rollup: CODEC.TX_ROLLUP_ID,
+  content: CODEC.TX_ROLLUP_BATCH_CONTENT,
+  burn_limit: CODEC.BURN_LIMIT,
+};
+
 export const IncreasePaidStorageSchema = {
   source: CODEC.PKH,
   fee: CODEC.ZARITH,
@@ -123,86 +134,6 @@ export const IncreasePaidStorageSchema = {
   storage_limit: CODEC.ZARITH,
   amount: CODEC.ZARITH,
   destination: CODEC.SMART_CONTRACT_ADDRESS,
-};
-
-export const UpdateConsensusKeySchema = {
-  source: CODEC.PKH,
-  fee: CODEC.ZARITH,
-  counter: CODEC.ZARITH,
-  gas_limit: CODEC.ZARITH,
-  storage_limit: CODEC.ZARITH,
-  pk: CODEC.PUBLIC_KEY,
-  proof: CODEC.SIGNATURE_PROOF,
-};
-
-export const UpdateCompanionKeySchema = {
-  source: CODEC.PKH,
-  fee: CODEC.ZARITH,
-  counter: CODEC.ZARITH,
-  gas_limit: CODEC.ZARITH,
-  storage_limit: CODEC.ZARITH,
-  pk: CODEC.PUBLIC_KEY,
-  proof: CODEC.SIGNATURE_PROOF,
-};
-
-export const DrainDelegateSchema = {
-  consensus_key: CODEC.PKH,
-  delegate: CODEC.PKH,
-  destination: CODEC.PKH,
-};
-
-export const SetDepositsLimitSchema = {
-  source: CODEC.PKH,
-  fee: CODEC.ZARITH,
-  counter: CODEC.ZARITH,
-  gas_limit: CODEC.ZARITH,
-  storage_limit: CODEC.ZARITH,
-  limit: CODEC.DEPOSITS_LIMIT,
-};
-
-export const SmartRollupOriginateSchema = {
-  source: CODEC.PKH,
-  fee: CODEC.ZARITH,
-  counter: CODEC.ZARITH,
-  gas_limit: CODEC.ZARITH,
-  storage_limit: CODEC.ZARITH,
-  pvm_kind: CODEC.PVM_KIND,
-  kernel: CODEC.PADDED_BYTES,
-  parameters_ty: CODEC.VALUE,
-  whitelist: CODEC.PKH_ARR,
-};
-
-export const SmartRollupAddMessagesSchema = {
-  source: CODEC.PKH,
-  fee: CODEC.ZARITH,
-  counter: CODEC.ZARITH,
-  gas_limit: CODEC.ZARITH,
-  storage_limit: CODEC.ZARITH,
-  message: CODEC.SMART_ROLLUP_MESSAGE,
-};
-
-export const SmartRollupExecuteOutboxMessageSchema = {
-  source: CODEC.PKH,
-  fee: CODEC.ZARITH,
-  counter: CODEC.ZARITH,
-  gas_limit: CODEC.ZARITH,
-  storage_limit: CODEC.ZARITH,
-  rollup: CODEC.SMART_ROLLUP_ADDRESS,
-  cemented_commitment: CODEC.SMART_ROLLUP_COMMITMENT_HASH,
-  output_proof: CODEC.PADDED_BYTES,
-};
-
-export const DalPublishCommitmentSchema = {
-  source: CODEC.PKH,
-  fee: CODEC.ZARITH,
-  counter: CODEC.ZARITH,
-  gas_limit: CODEC.ZARITH,
-  storage_limit: CODEC.ZARITH,
-  slot_header: CODEC.SLOT_HEADER,
-};
-
-export const FailingNoopSchema = {
-  arbitrary: CODEC.PADDED_BYTES,
 };
 
 export const operationEncoder =
@@ -217,6 +148,7 @@ export const operationEncoder =
 export const operationDecoder =
   (decoders: { [key: string]: Decoder }) => (value: Uint8ArrayConsumer) => {
     const op = value.consume(1);
+
     const operationName = kindMapping[op[0]];
     if (operationName === undefined) {
       throw new UnsupportedOperationError(op[0].toString());
@@ -225,7 +157,7 @@ export const operationDecoder =
     const decodedObj = decoders[operationName](value);
 
     if (typeof decodedObj !== 'object') {
-      throw new OperationDecodingError('Invalid operation, cannot be decoded.');
+      throw new OperationDecodingError('Decoded invalid operation');
     }
 
     return {
@@ -248,16 +180,10 @@ export const schemaEncoder =
         const values = value[key];
 
         if (!Array.isArray(values)) {
-          throw new OperationEncodingError(
-            `Invalid operation value "${JSON.stringify(
-              values
-            )}" of key "${key}, expected value to be Array.`
-          );
+          throw new OperationEncodingError(`Expected value to be Array ${JSON.stringify(values)}`);
         }
 
-        return (
-          prev + values.reduce((prevBytes, current) => prevBytes + encoder(current as object), '')
-        );
+        return prev + values.reduce((prevBytes, current) => prevBytes + encoder(current), '');
       } else {
         const encoder = encoders[valueToEncode];
         return prev + encoder(value[key]);

@@ -2,7 +2,7 @@ import { BaseTokenSchema } from '../../schema/types';
 import { Token, TokenFactory, ComparableToken, SemanticEncoding } from '../token';
 
 export class StringToken extends ComparableToken {
-  static prim: 'string' = 'string' as const;
+  static prim: 'string' = 'string';
 
   constructor(
     protected val: { prim: string; args: any[]; annots: any[] },
@@ -14,6 +14,14 @@ export class StringToken extends ComparableToken {
 
   public Execute(val: any): string {
     return val[Object.keys(val)[0]];
+  }
+
+  /**
+   * @deprecated ExtractSchema has been deprecated in favor of generateSchema
+   *
+   */
+  public ExtractSchema() {
+    return StringToken.prim;
   }
 
   generateSchema(): BaseTokenSchema {

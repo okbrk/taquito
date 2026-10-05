@@ -1,11 +1,10 @@
-import { Buffer } from 'buffer';
-import { b58Encode, bytesToString, PrefixV2 } from '@taquito/utils';
+import { b58cencode, bytes2Char, Prefix, prefix } from '@taquito/utils';
 import BigNumber from 'bignumber.js';
 import { Input } from '../types';
 
 export function memoHexToUtf8(memo: string) {
   const memoNoPadding = removeZeroPaddedBytesRight(memo);
-  return memoNoPadding === '' ? memoNoPadding : bytesToString(memoNoPadding);
+  return memoNoPadding === '' ? memoNoPadding : bytes2Char(memoNoPadding);
 }
 
 function removeZeroPaddedBytesRight(memo: string) {
@@ -17,7 +16,7 @@ export function readableFormat(saplingTransactionProperties: Omit<Input, 'positi
   return {
     value: convertValueToBigNumber(saplingTransactionProperties.value),
     memo: memoHexToUtf8(Buffer.from(saplingTransactionProperties.memo).toString('hex')),
-    paymentAddress: b58Encode(saplingTransactionProperties.paymentAddress, PrefixV2.SaplingAddress),
+    paymentAddress: b58cencode(saplingTransactionProperties.paymentAddress, prefix[Prefix.ZET1]),
   };
 }
 

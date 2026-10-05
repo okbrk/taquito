@@ -1,22 +1,16 @@
-import BigNumberJs from 'bignumber.js';
-type BigNumber = InstanceType<typeof BigNumberJs>;
-const BigNumber = BigNumberJs;
+import { BigNumber } from 'bignumber.js';
 import {
   BlockResponse,
   EntrypointsResponse,
   MichelsonV1Expression,
   SaplingDiffResponse,
   ScriptedContracts,
-  AILaunchCycleResponse,
 } from '@taquito/rpc';
 import { ContractsLibrary } from './taquito-contracts-library';
 import { BigMapQuery, BlockIdentifier, SaplingStateQuery, TzReadProvider } from '@taquito/taquito';
 
 export class ReadWrapperContractsLibrary implements TzReadProvider {
-  constructor(
-    private readProvider: TzReadProvider,
-    private contractslibrary: ContractsLibrary
-  ) {}
+  constructor(private readProvider: TzReadProvider, private contractslibrary: ContractsLibrary) {}
 
   async getScript(address: string, block: BlockIdentifier): Promise<ScriptedContracts> {
     const contractData = this.contractslibrary.getContract(address);
@@ -39,9 +33,6 @@ export class ReadWrapperContractsLibrary implements TzReadProvider {
   getBalance(address: string, block: BlockIdentifier): Promise<BigNumber> {
     return this.readProvider.getBalance(address, block);
   }
-  getSpendable(address: string, block: BlockIdentifier): Promise<BigNumber> {
-    return this.readProvider.getSpendable(address, block);
-  }
   getDelegate(address: string, block: BlockIdentifier): Promise<string | null> {
     return this.readProvider.getDelegate(address, block);
   }
@@ -55,7 +46,6 @@ export class ReadWrapperContractsLibrary implements TzReadProvider {
     hard_gas_limit_per_block: BigNumber;
     hard_storage_limit_per_operation: BigNumber;
     cost_per_byte: BigNumber;
-    smart_rollup_origination_size: number;
   }> {
     return this.readProvider.getProtocolConstants(block);
   }
@@ -100,8 +90,5 @@ export class ReadWrapperContractsLibrary implements TzReadProvider {
   }
   getLiveBlocks(block: BlockIdentifier): Promise<string[]> {
     return this.readProvider.getLiveBlocks(block);
-  }
-  getAdaptiveIssuanceLaunchCycle(block: BlockIdentifier): Promise<AILaunchCycleResponse> {
-    return this.readProvider.getAdaptiveIssuanceLaunchCycle(block);
   }
 }

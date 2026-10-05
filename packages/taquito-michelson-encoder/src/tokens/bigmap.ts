@@ -11,7 +11,7 @@ import {
 
 /**
  *  @category Error
- *  Error that indicates a failure happening when parsing encoding/executing Big Map types
+ *  @description Error that indicates a failure happening when parsing encoding/executing Big Map types
  */
 export class BigMapValidationError extends TokenValidationError {
   name = 'BigMapValidationError';
@@ -21,7 +21,7 @@ export class BigMapValidationError extends TokenValidationError {
 }
 
 export class BigMapToken extends Token {
-  static prim: 'big_map' = 'big_map' as const;
+  static prim: 'big_map' = 'big_map';
   constructor(
     protected val: { prim: string; args: any[]; annots?: any[] },
     protected idx: number,
@@ -38,6 +38,19 @@ export class BigMapToken extends Token {
     return this.createToken(this.val.args[0], 0) as unknown as ComparableToken;
   }
 
+  /**
+   * @deprecated ExtractSchema has been deprecated in favor of generateSchema
+   *
+   */
+  public ExtractSchema() {
+    return {
+      big_map: {
+        key: this.KeySchema.ExtractSchema(),
+        value: this.ValueSchema.ExtractSchema(),
+      },
+    };
+  }
+
   generateSchema(): BigMapTokenSchema {
     return {
       __michelsonType: BigMapToken.prim,
@@ -48,17 +61,12 @@ export class BigMapToken extends Token {
     };
   }
 
-  /**
-   * @throws {@link BigMapValidationError}
-   */
-  private validate(value: any) {
-    if (!MichelsonMap.isMichelsonMap(value)) {
-      throw new BigMapValidationError(
-        value,
-        this,
-        `Value ${JSON.stringify(value)} is not a MichelsonMap`
-      );
+  private isValid(value: any): BigMapValidationError | null {
+    if (MichelsonMap.isMichelsonMap(value)) {
+      return null;
     }
+
+    return new BigMapValidationError(value, this, 'Value must be a MichelsonMap');
   }
 
   private objLitToMichelsonMap(val: any): any {
@@ -73,13 +81,13 @@ export class BigMapToken extends Token {
     return val;
   }
 
-  /**
-   * @throws {@link BigMapValidationError}
-   */
   public Encode(args: any[]): any {
     const val: MichelsonMap<any, any> = this.objLitToMichelsonMap(args.pop());
 
-    this.validate(val);
+    const err = this.isValid(val);
+    if (err) {
+      throw err;
+    }
 
     return Array.from(val.keys())
       .sort((a: any, b: any) => this.KeySchema.compare(a, b))
@@ -91,13 +99,13 @@ export class BigMapToken extends Token {
       });
   }
 
-  /**
-   * @throws {@link BigMapValidationError}
-   */
   public EncodeObject(args: any, semantic?: SemanticEncoding): any {
     const val: MichelsonMap<any, any> = this.objLitToMichelsonMap(args);
 
-    this.validate(val);
+    const err = this.isValid(val);
+    if (err) {
+      throw err;
+    }
 
     if (semantic && semantic[BigMapToken.prim]) {
       return semantic[BigMapToken.prim](val, this.val);
@@ -113,10 +121,6 @@ export class BigMapToken extends Token {
       });
   }
 
-  /**
-   * @throws {@link InvalidMapTypeError} when the argument passed to val is an array but not a valid map type
-   * @throws {@link BigMapValidationError} when the value is invalid
-   */
   public Execute(val: any[] | { int: string }, semantic?: Semantic) {
     if (semantic && semantic[BigMapToken.prim]) {
       return semantic[BigMapToken.prim](val as any, this.val);

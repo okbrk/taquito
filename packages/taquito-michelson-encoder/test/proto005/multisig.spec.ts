@@ -54,48 +54,26 @@ describe('Contract with or token inside a pair token', () => {
 
   it('Extract all possible signatures properly', () => {
     const schema = new ParameterSchema(genericMultisig[0].args[0] as any);
+    expect(schema.ExtractSignatures()).toContainEqual(['default', 'unit']);
     expect(schema.ExtractSignatures()).toContainEqual([
-      'default',
-      { __michelsonType: 'unit', schema: 'unit' },
-    ]);
-    expect(schema.ExtractSignatures()).toContainEqual([
-      'main',
-      { __michelsonType: 'nat', schema: 'nat' },
-      'operation',
-      {
-        __michelsonType: 'lambda',
-        schema: {
-          parameters: { __michelsonType: 'unit', schema: 'unit' },
-          returns: {
-            __michelsonType: 'list',
-            schema: { __michelsonType: 'operation', schema: 'operation' },
-          },
-        },
-      },
-      {
-        __michelsonType: 'list',
-        schema: {
-          __michelsonType: 'option',
-          schema: { __michelsonType: 'signature', schema: 'signature' },
-        },
-      },
-    ]);
+        "main", 
+        "nat", 
+        "operation", 
+        {
+          "lambda": {
+                      "parameters": "unit", 
+                      "returns": {list: "operation"}
+                    }
+        }, 
+        {list: "signature"}
+      ]);
     expect(schema.ExtractSignatures()).toContainEqual([
       'main',
-      { __michelsonType: 'nat', schema: 'nat' },
+      'nat',
       'change_keys',
-      { __michelsonType: 'nat', schema: 'nat' },
-      {
-        __michelsonType: 'list',
-        schema: { __michelsonType: 'key', schema: 'key' },
-      },
-      {
-        __michelsonType: 'list',
-        schema: {
-          __michelsonType: 'option',
-          schema: { __michelsonType: 'signature', schema: 'signature' },
-        },
-      },
+      'nat',
+      {list: "key"},
+      {list: "signature"}
     ]);
   });
 });

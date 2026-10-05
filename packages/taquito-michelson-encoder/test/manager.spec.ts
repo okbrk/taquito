@@ -5,9 +5,10 @@ import { Schema } from '../src/schema/storage';
 describe('Schema test', () => {
   it('Should parse storage schema properly', () => {
     const schema = new Schema(storage);
+    expect(schema.ExtractSchema()).toEqual('key_hash');
     expect(schema.generateSchema()).toEqual({
-      __michelsonType: 'key_hash',
-      schema: 'key_hash',
+      __michelsonType: "key_hash",
+      schema:'key_hash'
     });
   });
 
@@ -21,16 +22,7 @@ describe('Schema test', () => {
   it('Should extract signature properly', () => {
     const schema = new ParameterSchema(doSchema);
     expect(schema.ExtractSignatures()).toContainEqual([
-      {
-        __michelsonType: 'lambda',
-        schema: {
-          parameters: { __michelsonType: 'unit', schema: 'unit' },
-          returns: {
-            __michelsonType: 'list',
-            schema: { __michelsonType: 'operation', schema: 'operation' },
-          },
-        },
-      },
+      { lambda: { parameters: 'unit', returns: {list: "operation"} } },
     ]);
   });
 

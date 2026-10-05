@@ -1,4 +1,3 @@
-import { vi } from 'vitest';
 import { SaplingTransactionViewer } from '../../src/sapling-tx-viewer/sapling-transaction-viewer';
 import { InMemoryViewingKey } from '../../src/sapling-keys/in-memory-viewing-key';
 import { saplingStateDiff, saplingStateDiffMemo4 } from '../data';
@@ -10,7 +9,7 @@ describe('SaplingTransactionViewer', () => {
 
   beforeEach(async () => {
     mockRpcClient = {
-      getSaplingDiffById: vi.fn(),
+      getSaplingDiffById: jest.fn(),
     };
     mockRpcClient.getSaplingDiffById.mockResolvedValue(saplingStateDiff);
 
@@ -19,25 +18,27 @@ describe('SaplingTransactionViewer', () => {
     );
   });
 
-  it('Should be instantiable', async () => {
+  it('Should be instantiable', async (done) => {
     const txViewer = new SaplingTransactionViewer(
       viewingKeyInMemory,
       { saplingId: '123' },
       mockRpcClient
     );
     expect(txViewer).toBeDefined();
+    done();
   });
 
-  it('should retrieve the correct balance from sapling state', async () => {
+  it('should retrieve the correct balance from sapling state', async (done) => {
     const txViewer = new SaplingTransactionViewer(
       viewingKeyInMemory,
       { saplingId: '3899' },
       mockRpcClient
     );
     expect(await txViewer.getBalance()).toEqual(new BigNumber(5000000));
+    done();
   });
 
-  it('Retrieve incoming and outgoing transactions in readable format', async () => {
+  it('Retrieve incoming and outgoing transactions in readable format', async (done) => {
     const txViewer = new SaplingTransactionViewer(
       viewingKeyInMemory,
       { saplingId: '3899' },
@@ -104,9 +105,10 @@ describe('SaplingTransactionViewer', () => {
         },
       ],
     });
+    done();
   });
 
-  it('Retrieve incoming and outgoing transactions raw format', async () => {
+  it('Retrieve incoming and outgoing transactions raw format', async (done) => {
     mockRpcClient.getSaplingDiffById.mockResolvedValue(saplingStateDiffMemo4);
 
     viewingKeyInMemory = await InMemoryViewingKey.fromSpendingKey(
@@ -138,9 +140,10 @@ describe('SaplingTransactionViewer', () => {
       ],
       outgoing: [],
     });
+    done();
   });
 
-  it('should ignore transactions having invalid commitment', async () => {
+  it('should ignore transactions having invalid commitment', async (done) => {
     viewingKeyInMemory = await InMemoryViewingKey.fromSpendingKey(
       'sask27SLmU9herddJ9EmreYA6y3Jmpxvrzk5891R8Z4osTGCoxfevAV9HafAAntWhRDHNxytBCN9qtFE7eBk9DE2ewEzvXUSSKRhrjF7pshtoc4oWGBS7Z1JJ4VHNanXCDc3qdUb45cp6QJS8sbzQqZNFycNyjNr3cXdodUfrGyHDsiX8JHPaL9ASJxauwmVqRmT6rYKEUagJUQEVzdHJ72Wd6ewEC1mHrMpvyNHkkcSkaLRr'
     );
@@ -172,5 +175,6 @@ describe('SaplingTransactionViewer', () => {
         },
       ],
     });
+    done();
   });
 });

@@ -1,5 +1,6 @@
-import { ForgedBytes, IncreasePaidStorageOperation } from '@taquito/taquito';
+import { ForgedBytes } from '../../src/operations/types';
 import { OperationContentsAndResult } from '@taquito/rpc';
+import { IncreasePaidStorageOperation } from '../../src/operations/increase-paid-storage-operation';
 import { defaultConfigConfirmation } from '../../src/context';
 import { IncreasePaidStorageOperationBuilder } from '../helpers';
 
@@ -57,7 +58,7 @@ describe('IncreasePaidStorage operation', () => {
   beforeEach(() => {
     fakeContext = {
       rpc: {
-        getBlock: vi.fn(),
+        getBlock: jest.fn(),
       },
       config: { ...defaultConfigConfirmation },
     };

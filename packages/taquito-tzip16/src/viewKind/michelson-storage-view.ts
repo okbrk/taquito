@@ -10,10 +10,13 @@ import {
   Wallet,
   ViewSimulationError,
 } from '@taquito/taquito';
-import { ForbiddenInstructionInViewCodeError, NoParameterExpectedError } from '../errors';
+import {
+  ForbiddenInstructionInViewCode,
+  InvalidViewParameterError,
+  NoParameterExpectedError,
+} from '../tzip16-errors';
 import { validateAndExtractFailwith, TzReadProvider } from '@taquito/taquito';
 import { View } from './interface';
-import { InvalidViewParameterError } from '@taquito/core';
 
 export class MichelsonStorageView implements View {
   constructor(
@@ -27,11 +30,11 @@ export class MichelsonStorageView implements View {
   ) {}
 
   /**
-   * According to the tzip-16 standard, the following instructions must not be used in the code of the view:
+   * @description According to the tzip-16 standard, the following instructions must not be used in the code of the view:
    * 'AMOUNT', 'CREATE_CONTRACT', 'SENDER', 'SET_DELEGATE', 'SOURCE', and 'TRANSFER_TOKENS'
    * The method throw an error if an illegal instruction is found
    */
-  private findForbiddenInstructionInViewCodeError(code: MichelsonV1ExpressionExtended[]) {
+  private findForbiddenInstructionInViewCode(code: MichelsonV1ExpressionExtended[]) {
     const illegalInstructions = [
       'AMOUNT',
       'CREATE_CONTRACT',
@@ -44,17 +47,17 @@ export class MichelsonStorageView implements View {
     for (const forbiddenInstruction of illegalInstructions) {
       for (const instruction of code) {
         if (instruction.prim === forbiddenInstruction) {
-          throw new ForbiddenInstructionInViewCodeError(forbiddenInstruction);
+          throw new ForbiddenInstructionInViewCode(forbiddenInstruction);
         }
         if (instruction.args && instruction.args.length !== 0) {
-          this.findForbiddenInstructionInViewCodeError(instruction.args as any);
+          this.findForbiddenInstructionInViewCode(instruction.args as any);
         }
       }
     }
   }
 
   /**
-   * According to the tzip-16 standard, in the first version of the specification, the instruction SELF should only be used before ADDRESS
+   * @description According to the tzip-16 standard, in the first version of the specification, the instruction SELF should only be used before ADDRESS
    * The method throws an error is the instruction SELF is present, but not followed by ADDRESS
    */
   private illegalUseOfSelfInstruction(code: MichelsonV1ExpressionExtended[]) {
@@ -63,7 +66,7 @@ export class MichelsonStorageView implements View {
         const index = code.indexOf(instruction);
         const nextInstruction = code[index + 1] ? code[index + 1].prim : undefined;
         if (nextInstruction !== 'ADDRESS') {
-          throw new ForbiddenInstructionInViewCodeError(
+          throw new ForbiddenInstructionInViewCode(
             'the instruction SELF should only be used before ADDRESS'
           );
         }
@@ -75,7 +78,7 @@ export class MichelsonStorageView implements View {
   }
 
   /**
-   * Loops through the view's code and replace SELF, BALANCE, NOW, and CHAIN_ID with Michelson expressions that match the current context, if applicable.
+   * @description Loops through the view's code and replace SELF, BALANCE, NOW, and CHAIN_ID with Michelson expressions that match the current context, if applicable.
    */
   private adaptViewCodeToContext(
     code: MichelsonV1ExpressionExtended[],
@@ -138,7 +141,7 @@ export class MichelsonStorageView implements View {
 
   async executeView(...args: any[]) {
     // validate view code against tzip-16 specifications
-    this.findForbiddenInstructionInViewCodeError(this.code);
+    this.findForbiddenInstructionInViewCode(this.code);
     this.illegalUseOfSelfInstruction(this.code);
 
     const { arg, viewParameterType } = this.formatArgsAndParameter(args);
@@ -147,15 +150,12 @@ export class MichelsonStorageView implements View {
     const storageArgs = storageType.args[0];
 
     // currentContext
-    const storageValue: any =
-      this.contract.readBlock === 'head'
-        ? await this.readProvider.getStorage(this.contract.address, 'head')
-        : this.contract.script.storage;
+    const storageValue: any = await this.readProvider.getStorage(this.contract.address, 'head');
     const chainId = await this.readProvider.getChainId();
     const contractBalance = (
-      await this.readProvider.getBalance(this.contract.address, this.contract.readBlock)
+      await this.readProvider.getBalance(this.contract.address, 'head')
     ).toString();
-    const blockTimestamp = await this.readProvider.getBlockTimestamp(this.contract.readBlock);
+    const blockTimestamp = await this.readProvider.getBlockTimestamp('head');
 
     const code = this.adaptViewCodeToContext(this.code, contractBalance, blockTimestamp, chainId);
 

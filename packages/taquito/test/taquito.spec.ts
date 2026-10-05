@@ -1,7 +1,6 @@
 import { TezosToolkit, SetProviderOptions, Wallet, RpcPacker } from '../src/taquito';
 import { RpcTzProvider } from '../src/tz/rpc-tz-provider';
 import { RpcContractProvider } from '../src/contract/rpc-contract-provider';
-import { PrepareProvider } from '../src/prepare/prepare-provider';
 import { PollingSubscribeProvider } from '../src/subscribe/polling-subcribe-provider';
 import { NoopSigner } from '../src/signer/noop';
 import { RpcClient } from '@taquito/rpc';
@@ -9,7 +8,6 @@ import { RPCEstimateProvider } from '../src/estimate/rpc-estimate-provider';
 import { OperationFactory } from '../src/wallet/operation-factory';
 import { NoopGlobalConstantsProvider } from '../src/global-constants/noop-global-constants-provider';
 import { TaquitoLocalForger } from '../src/forger/taquito-local-forger';
-import { RpcInjector } from '../src/taquito';
 
 describe('TezosToolkit test', () => {
   let mockRpcClient: any;
@@ -17,16 +15,16 @@ describe('TezosToolkit test', () => {
 
   beforeEach(() => {
     mockRpcClient = {
-      getBlock: vi.fn(),
-      getScript: vi.fn(),
-      getManagerKey: vi.fn(),
-      getStorage: vi.fn(),
-      getBlockHeader: vi.fn(),
-      getBlockMetadata: vi.fn(),
-      getContract: vi.fn(),
-      forgeOperations: vi.fn(),
-      injectOperation: vi.fn(),
-      preapplyOperations: vi.fn(),
+      getBlock: jest.fn(),
+      getScript: jest.fn(),
+      getManagerKey: jest.fn(),
+      getStorage: jest.fn(),
+      getBlockHeader: jest.fn(),
+      getBlockMetadata: jest.fn(),
+      getContract: jest.fn(),
+      forgeOperations: jest.fn(),
+      injectOperation: jest.fn(),
+      preapplyOperations: jest.fn(),
     };
 
     mockRpcClient.getContract.mockResolvedValue({ counter: 0 });
@@ -56,7 +54,6 @@ describe('TezosToolkit test', () => {
     expect(tezos.stream).toBeInstanceOf(PollingSubscribeProvider);
     expect(tezos.tz).toBeInstanceOf(RpcTzProvider);
     expect(tezos.wallet).toBeInstanceOf(Wallet);
-    expect(tezos.prepare).toBeInstanceOf(PrepareProvider);
   });
 
   it('setProvider with string should create rpc provider', () => {
@@ -76,7 +73,6 @@ describe('TezosToolkit test', () => {
     'packer',
     'globalConstantsProvider',
     'readProvider',
-    'injectorProvider',
   ];
   providerKey
     .filter((x) => x !== 'rpc')
@@ -151,17 +147,6 @@ describe('TezosToolkit test', () => {
       expect(instance).toEqual('test');
       toolkit.setProvider({ [key]: 'test' as any });
       expect(toolkit['_context'].forger).toEqual(instance);
-    });
-  });
-
-  providerKey.forEach((key) => {
-    it(`setting ${key} provider should not override the injector provider`, () => {
-      expect(toolkit['_context'].injector).toBeInstanceOf(RpcInjector);
-      toolkit.setProvider({ injectorProvider: 'test' as any });
-      const instance = toolkit['_context'].injector;
-      expect(instance).toEqual('test');
-      toolkit.setProvider({ [key]: 'test' as any });
-      expect(toolkit['_context'].injector).toEqual(instance);
     });
   });
 

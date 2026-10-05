@@ -11,13 +11,13 @@ import {
 
 import { InternalOperationResult } from '@taquito/rpc';
 
-import { InvalidFilterExpressionError } from './errors';
+import { InvalidFilterExpressionError } from '../error';
 
 const opHashFilter = (op: OperationContent, filter: OpHashFilter) => op.hash === filter.opHash;
 
 const sourceFilter = (x: OperationContent, filter: SourceFilter) => {
   switch (x.kind) {
-    case 'attestation':
+    case 'endorsement':
       return 'metadata' in x && x.metadata.delegate === filter.source;
     case 'activate_account':
       return 'metadata' in x && x.pkh === filter.source;
@@ -52,25 +52,20 @@ const destinationFilter = (x: OperationContent, filter: DestinationFilter) => {
   }
 };
 
-export const eventFilter = (
-  result: InternalOperationResult,
-  address?: string,
-  tag?: string,
-  excludeFailedOperations?: boolean
-) => {
-  if (result.kind !== 'event') {
+export const eventFilter = (result: InternalOperationResult, address?: string, tag?: string) => {
+  if (result.kind === 'event') {
+    if (address && tag) {
+      return result.source === address && result.tag === tag;
+    } else if (address && !tag) {
+      return result.source === address;
+    } else if (tag) {
+      return result.tag === tag;
+    } else {
+      return true;
+    }
+  } else {
     return false;
   }
-  if (tag && result.tag !== tag) {
-    return false;
-  }
-  if (address && result.source !== address) {
-    return false;
-  }
-  if (excludeFailedOperations && result.result.status !== 'applied') {
-    return false;
-  }
-  return true;
 };
 
 export const evaluateOpFilter = (op: OperationContent, filter: OpFilter) => {
@@ -92,7 +87,7 @@ export const evaluateExpression = (op: OperationContent, exp: FilterExpression):
   } else if (Array.isArray(exp.or)) {
     return exp.or.some((x: OpFilter | FilterExpression) => evaluateFilter(op, x));
   } else {
-    throw new InvalidFilterExpressionError(exp);
+    throw new InvalidFilterExpressionError('Filter expression must contain either and/or property');
   }
 };
 

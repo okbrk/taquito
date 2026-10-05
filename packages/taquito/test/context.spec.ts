@@ -8,7 +8,7 @@ describe('Configurations for the confirmation methods and streamer', () => {
 
   beforeAll(() => {
     mockRpcClient = {
-      getConstants: vi.fn(),
+      getConstants: jest.fn(),
     };
     context = new Context(mockRpcClient);
   });

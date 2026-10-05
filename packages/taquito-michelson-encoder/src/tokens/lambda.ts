@@ -2,7 +2,7 @@ import { LambdaTokenSchema } from '../schema/types';
 import { SemanticEncoding, Token, TokenFactory } from './token';
 
 export class LambdaToken extends Token {
-  static prim: 'lambda' = 'lambda' as const;
+  static prim: 'lambda' = 'lambda';
 
   constructor(
     protected val: { prim: string; args: any[]; annots: any[] },
@@ -38,6 +38,19 @@ export class LambdaToken extends Token {
       return semantic[LambdaToken.prim](val);
     }
     return val;
+  }
+
+  /**
+   * @deprecated ExtractSchema has been deprecated in favor of generateSchema
+   *
+   */
+  public ExtractSchema() {
+    return {
+      [LambdaToken.prim]: {
+        parameters: this.paramSchema.ExtractSchema(),
+        returns: this.returnSchema.ExtractSchema(),
+      },
+    };
   }
 
   generateSchema(): LambdaTokenSchema {

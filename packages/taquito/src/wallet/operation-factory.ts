@@ -1,55 +1,29 @@
 import { BlockResponse } from '@taquito/rpc';
-import {
-  BehaviorSubject,
-  concat,
-  defer,
-  from,
-  Observable,
-  of,
-  range,
-  ReplaySubject,
-  SchedulerLike,
-  throwError,
-} from 'rxjs';
-import { concatMap, mergeMap, share, startWith, switchMap, timeout } from 'rxjs/operators';
+import { concat, defer, from, Observable, of, range, SchedulerLike, throwError } from 'rxjs';
+import { concatMap, shareReplay, startWith, switchMap, timeoutWith } from 'rxjs/operators';
 import { Context } from '../context';
 import { BlockIdentifier } from '../read-provider/interface';
 import { createObservableFromSubscription } from '../subscribe/create-observable-from-subscription';
 import { BatchWalletOperation } from './batch-operation';
 import { DelegationWalletOperation } from './delegation-operation';
-import { IncreasePaidStorageWalletOperation } from './increase-paid-storage-operation';
 import { WalletOperation } from './operation';
 import { OriginationWalletOperation } from './origination-operation';
 import { TransactionWalletOperation } from './transaction-operation';
-import { TransferTicketWalletOperation } from './transfer-ticket-operation';
-import { ConfirmationTimeoutError } from '../errors';
-import { RegisterGlobalConstantWalletOperation } from './register-global-constant-operation';
-
-export function timeoutAfter<T>(timeoutMillisec: number): (source: Observable<T>) => Observable<T> {
-  return function inner(source: Observable<T>): Observable<T> {
-    return new BehaviorSubject(null).pipe(
-      timeout({
-        each: timeoutMillisec,
-        with: () =>
-          throwError(() => new ConfirmationTimeoutError(`Confirmation polling timed out`)),
-      }),
-      mergeMap(() => source)
-    );
-  };
-}
 
 export const createNewPollingBasedHeadObservable = (
   sharedHeadOb: Observable<BlockResponse>,
   context: Context,
-  _scheduler?: SchedulerLike
+  scheduler?: SchedulerLike
 ): Observable<BlockResponse> => {
   return sharedHeadOb.pipe(
-    timeoutAfter(context.config.confirmationPollingTimeoutSecond * 1000),
-    share({
-      connector: () => new ReplaySubject(1),
-      resetOnError: false,
-      resetOnComplete: false,
-      resetOnRefCountZero: true,
+    timeoutWith(
+      context.config.confirmationPollingTimeoutSecond * 1000,
+      throwError(new Error('Confirmation polling timed out')),
+      scheduler
+    ),
+    shareReplay({
+      refCount: true,
+      scheduler,
     })
   );
 };
@@ -134,17 +108,6 @@ export class OperationFactory {
     );
   }
 
-  async createTransferTicketOperation(
-    hash: string,
-    config: OperationFactoryConfig = {}
-  ): Promise<TransferTicketWalletOperation> {
-    return new TransferTicketWalletOperation(
-      hash,
-      this.context.clone(),
-      await this.createHeadObservableFromConfig(config)
-    );
-  }
-
   async createDelegationOperation(
     hash: string,
     config: OperationFactoryConfig = {}
@@ -161,28 +124,6 @@ export class OperationFactory {
     config: OperationFactoryConfig = {}
   ): Promise<OriginationWalletOperation> {
     return new OriginationWalletOperation(
-      hash,
-      this.context.clone(),
-      await this.createHeadObservableFromConfig(config)
-    );
-  }
-
-  async createIncreasePaidStorageOperation(
-    hash: string,
-    config: OperationFactoryConfig = {}
-  ): Promise<IncreasePaidStorageWalletOperation> {
-    return new IncreasePaidStorageWalletOperation(
-      hash,
-      this.context.clone(),
-      await this.createHeadObservableFromConfig(config)
-    );
-  }
-
-  async createRegisterGlobalConstantOperation(
-    hash: string,
-    config: OperationFactoryConfig = {}
-  ): Promise<RegisterGlobalConstantWalletOperation> {
-    return new RegisterGlobalConstantWalletOperation(
       hash,
       this.context.clone(),
       await this.createHeadObservableFromConfig(config)

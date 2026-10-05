@@ -1,69 +1,29 @@
+import sourceMaps from 'rollup-plugin-sourcemaps';
 import camelCase from 'lodash.camelcase';
 import typescript from 'rollup-plugin-typescript2';
 import json from 'rollup-plugin-json';
-import nodePolyfills from 'rollup-plugin-polyfill-node';
 
 const pkg = require('./package.json');
 
 const libraryName = 'taquito-beacon-wallet';
 
-const mainConfig = {
+export default {
   input: `src/${libraryName}.ts`,
   output: [
-    {
-      file: pkg.main,
-      name: camelCase(libraryName),
-      format: 'umd',
-      sourcemap: true,
-      globals: {
-        '@ecadlabs/beacon-sdk': 'beacon',
-        '@taquito/core': 'taquitoCore',
-        '@ecadlabs/beacon-dapp': 'beaconDapp',
-        'typedarray-to-buffer': 'typedarrayToBuffer',
-        '@taquito/taquito': 'taquito',
-        '@taquito/utils': 'taquitoUtils',
-      },
-    },
+    { file: pkg.main, name: camelCase(libraryName), format: 'umd', sourcemap: true, globals: { '@airgap/beacon-sdk': 'beacon'} },
     { file: pkg.module, format: 'es', sourcemap: true },
   ],
+  external: [],
   watch: {
     include: 'src/**',
   },
-  external: [
-    '@ecadlabs/beacon-sdk',
-    '@ecadlabs/beacon-dapp',
-    '@taquito/core',
-    'typedarray-to-buffer',
-    '@taquito/taquito',
-    '@taquito/utils',
-  ],
   plugins: [
+    // Allow json resolution
     json(),
+    // Compile TypeScript files
     typescript({ tsconfig: './tsconfig.prod.json', useTsconfigDeclarationDir: true }),
-    nodePolyfills(),
+
+    // Resolve source maps to the original source
+    sourceMaps(),
   ],
 };
-
-const beaconTypesConfig = {
-  input: 'src/beacon-types.ts',
-  output: [
-    {
-      file: 'dist/beacon-types.umd.js',
-      name: 'taquitoBeaconTypes',
-      format: 'umd',
-      sourcemap: true,
-      globals: {
-        '@ecadlabs/beacon-types': 'beaconTypes',
-      },
-    },
-    { file: 'dist/beacon-types.es6.js', format: 'es', sourcemap: true },
-  ],
-  external: ['@ecadlabs/beacon-types'],
-  plugins: [
-    json(),
-    typescript({ tsconfig: './tsconfig.prod.json', useTsconfigDeclarationDir: true }),
-    nodePolyfills(),
-  ],
-};
-
-export default [mainConfig, beaconTypesConfig];

@@ -1,15 +1,11 @@
-import { validateBlock, ValidationResult } from '@taquito/utils';
 import {
   BlockResponse,
   EntrypointsResponse,
   MichelsonV1Expression,
   SaplingDiffResponse,
   ScriptedContracts,
-  AILaunchCycleResponse,
 } from '@taquito/rpc';
-import BigNumberJs from 'bignumber.js';
-type BigNumber = InstanceType<typeof BigNumberJs>;
-const BigNumber = BigNumberJs;
+import BigNumber from 'bignumber.js';
 
 export type BigMapQuery = {
   id: string;
@@ -23,27 +19,17 @@ export type SaplingStateQuery = {
 // block identifier can be head, a block relative to head, a block hash or a block level
 export type BlockIdentifier = 'head' | `head~${number}` | `B${string}` | number;
 
-export const isBlockHashIdentifier = (block: string): block is `B${string}` => {
-  return validateBlock(block) === ValidationResult.VALID;
-};
-
 export interface TzReadProvider {
   /**
-   * The spendable balance of a contract (in mutez), also known as liquid balance. Corresponds to tez owned by the contract that are neither staked, nor in unstaked requests, nor in frozen bonds. Identical to the 'spendable' RPC.
-   * @param address address from which we want to retrieve the spendable balance
+   * @description Access the balance of a contract.
+   * @param address address from which we want to retrieve the balance
    * @param block from which we want to retrieve the balance
    * @returns the balance in mutez
    */
   getBalance(address: string, block: BlockIdentifier): Promise<BigNumber>;
+
   /**
-   * The spendable balance of a contract (in mutez), also known as liquid balance. Corresponds to tez owned by the contract that are neither staked, nor in unstaked requests, nor in frozen bonds. Identical to the 'balance' RPC.
-   * @param address address from which we want to retrieve the spendable balance
-   * @param block from which we want to retrieve the balance
-   * @returns the balance in mutez
-   */
-  getSpendable(address: string, block: BlockIdentifier): Promise<BigNumber>;
-  /**
-   * Access the delegate of a contract, if any.
+   * @description Access the delegate of a contract, if any.
    * @param address contract address from which we want to retrieve the delegate (baker)
    * @param block from which we want to retrieve the delegate
    * @returns the public key hash of the delegate or null if no delegate
@@ -51,13 +37,13 @@ export interface TzReadProvider {
   getDelegate(address: string, block: BlockIdentifier): Promise<string | null>;
 
   /**
-   * Access the next protocol hash
+   * @description Access the next protocol hash
    * @param block from which we want to retrieve the next protocol hash
    */
   getNextProtocol(block: BlockIdentifier): Promise<string>;
 
   /**
-   * Access protocol constants used in Taquito
+   * @description Access protocol constants used in Taquito
    * @param block from which we want to retrieve the constants
    */
   getProtocolConstants(block: BlockIdentifier): Promise<{
@@ -67,11 +53,11 @@ export interface TzReadProvider {
     hard_gas_limit_per_block: BigNumber;
     hard_storage_limit_per_operation: BigNumber;
     cost_per_byte: BigNumber;
-    smart_rollup_origination_size: number;
+    tx_rollup_origination_size?: number;
   }>;
 
   /**
-   * Access the script (code and storage) of a smart contract
+   * @description Access the script (code and storage) of a smart contract
    * @param contract contract address from which we want to retrieve the script
    * @param block from which we want to retrieve the storage value
    * @returns Note: The code must be in the JSON format and not contain global constant
@@ -79,46 +65,46 @@ export interface TzReadProvider {
   getScript(contract: string, block: BlockIdentifier): Promise<ScriptedContracts>;
 
   /**
-   * Access the storage of a contract
+   * @description Access the storage of a contract
    * @param contract contract address from which we want to retrieve the storage
    * @param block from which we want to retrieve the storage value
    */
   getStorage(contract: string, block: BlockIdentifier): Promise<MichelsonV1Expression>;
 
   /**
-   * Access the block hash
+   * @description Access the block hash
    */
   getBlockHash(block: BlockIdentifier): Promise<string>;
 
   /**
-   * Access the block level
+   * @description Access the block level
    */
   getBlockLevel(block: BlockIdentifier): Promise<number>;
 
   /**
-   * Access the counter of an address
+   * @description Access the counter of an address
    * @param pkh from which we want to retrieve the counter
    * @param block from which we want to retrieve the counter
    */
   getCounter(pkh: string, block: BlockIdentifier): Promise<string>;
 
   /**
-   * Access the timestamp of a block
+   * @description Access the timestamp of a block
    * @param block from which we want to retrieve the timestamp
    * @returns date ISO format zero UTC offset ("2022-01-19T22:37:07Z")
    */
   getBlockTimestamp(block: BlockIdentifier): Promise<string>;
 
   /**
-   * Access the value associated with a key in a big map.
+   * @description Access the value associated with a key in a big map.
    * @param bigMapQuery Big Map ID and Expression hash to query (A b58check encoded Blake2b hash of the expression)
    * @param block from which we want to retrieve the big map value
    */
   getBigMapValue(bigMapQuery: BigMapQuery, block: BlockIdentifier): Promise<MichelsonV1Expression>;
 
   /**
-   * Access the value associated with a sapling state ID.
-   * @param saplingStateQuery Sapling state ID query
+   * @description Access the value associated with a sapling state ID.
+   * @param id Sapling state ID
    * @param block from which we want to retrieve the sapling state
    */
   getSaplingDiffById(
@@ -127,7 +113,7 @@ export interface TzReadProvider {
   ): Promise<SaplingDiffResponse>;
 
   /**
-   * Access the sapling state of a smart contract.
+   * @description Access the sapling state of a smart contract.
    * @param contractAddress The address of the smart contract
    * @param block The block you want to retrieve the sapling state from
    */
@@ -137,38 +123,32 @@ export interface TzReadProvider {
   ): Promise<SaplingDiffResponse>;
 
   /**
-   * Return the list of entrypoints of the contract
+   * @description Return the list of entrypoints of the contract
    * @param contract address of the contract we want to get the entrypoints of
    */
   getEntrypoints(contract: string): Promise<EntrypointsResponse>;
 
   /**
-   * Access the chain id
+   * @description Access the chain id
    */
   getChainId(): Promise<string>;
 
   /**
-   * Indicate if an account is revealed
+   * @description Indicate if an account is revealed
    * @param publicKeyHash of the account
    * @param block from which we want to know if the account is revealed
    */
   isAccountRevealed(publicKeyHash: string, block: BlockIdentifier): Promise<boolean>;
 
   /**
-   * Return all the information about a block
+   * @description Return all the information about a block
    * @param block from which we want to retrieve the information
    */
   getBlock(block: BlockIdentifier): Promise<BlockResponse>;
 
   /**
-   * Return a list of the ancestors of the given block which, if referred to as the branch in an operation header, are recent enough for that operation to be included in the current block.
+   * @description Return a list of the ancestors of the given block which, if referred to as the branch in an operation header, are recent enough for that operation to be included in the current block.
    * @param block from which we want to retrieve the information
    */
   getLiveBlocks(block: BlockIdentifier): Promise<string[]>;
-
-  /**
-   * Returns the cycle at which the launch of the Adaptive Issuance feature is set to happen. A result of null means that the feature is not yet set to launch.
-   * @param block from which we want to retrieve the information
-   */
-  getAdaptiveIssuanceLaunchCycle(block: BlockIdentifier): Promise<AILaunchCycleResponse>;
 }

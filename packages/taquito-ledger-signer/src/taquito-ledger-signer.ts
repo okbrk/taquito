@@ -3,10 +3,9 @@
  * @module @taquito/ledger-signer
  */
 
-import { Buffer } from 'buffer';
-import { Signer } from '@taquito/core';
+import { Signer } from '@taquito/taquito';
 import Transport from '@ledgerhq/hw-transport';
-import { b58Encode, PrefixV2 } from '@taquito/utils';
+import { b58cencode, prefix, Prefix, ProhibitedActionError } from '@taquito/utils';
 import {
   appendWatermark,
   transformPathToBuffer,
@@ -15,16 +14,12 @@ import {
   validateResponse,
   extractValue,
 } from './utils';
-import { blake2b } from '@noble/hashes/blake2.js';
+import { hash } from '@stablelib/blake2b';
 import {
   PublicKeyHashRetrievalError,
   PublicKeyRetrievalError,
   InvalidLedgerResponseError,
-  InvalidDerivationTypeError,
-} from './errors';
-import { InvalidDerivationPathError, ProhibitedActionError } from '@taquito/core';
-
-export { InvalidDerivationPathError } from '@taquito/core';
+} from './error';
 
 export type LedgerTransport = Pick<Transport, 'send' | 'decorateAppAPIMethods' | 'setScrambleKey'>;
 
@@ -32,10 +27,33 @@ export enum DerivationType {
   ED25519 = 0x00, // tz1
   SECP256K1 = 0x01, // tz2
   P256 = 0x02, // tz3
-  BIP32_ED25519 = 0x03, // tz1 BIP32
 }
 
-export { InvalidDerivationTypeError } from './errors';
+/**
+ *  @category Error
+ *  @description Error that indicates an invalid derivation type being passed or used
+ */
+export class InvalidDerivationTypeError extends Error {
+  public name = 'InvalidDerivationTypeError';
+  constructor(public derivationType: string) {
+    super(
+      `The derivation type ${derivationType} is invalid. The derivation type must be DerivationType.ED25519, DerivationType.SECP256K1 or DerivationType.P256`
+    );
+  }
+}
+
+/**
+ *  @category Error
+ *  @description Error that indicates an invalid derivation path being passed or used
+ */
+export class InvalidDerivationPathError extends Error {
+  public name = 'InvalidDerivationPathError';
+  constructor(public derivationPath: string) {
+    super(
+      `The derivation path ${derivationPath} is invalid. The derivation path must start with 44'/1729`
+    );
+  }
+}
 
 export const HDPathTemplate = (account: number) => {
   return `44'/1729'/${account}'/0'`;
@@ -45,12 +63,12 @@ export { VERSION } from './version';
 
 /**
  *
- * Implementation of the Signer interface that will allow signing operation from a Ledger Nano device
+ * @description Implementation of the Signer interface that will allow signing operation from a Ledger Nano device
  *
  * @param transport A transport instance from LedgerJS libraries depending on the platform used (e.g. Web, Node)
  * @param path The ledger derivation path (default is "44'/1729'/0'/0'")
  * @param prompt Whether to prompt the ledger for public key (default is true)
- * @param derivationType The value which defines the curve to use (DerivationType.ED25519(default), DerivationType.SECP256K1, DerivationType.P256, DerivationType.BIP32_ED25519)
+ * @param derivationType The value which defines the curve to use (DerivationType.ED25519(default), DerivationType.SECP256K1, DerivationType.P256)
  *
  * @example
  * ```
@@ -64,13 +82,6 @@ export { VERSION } from './version';
  * import TransportU2F from "@ledgerhq/hw-transport-u2f";
  * const transport = await TransportU2F.create();
  * const ledgerSigner = new LedgerSigner(transport, "44'/1729'/0'/0'", true, DerivationType.SECP256K1);
- * ```
- *
- * @example
- * ```
- * import TransportU2F from "@ledgerhq/hw-transport-u2f";
- * const transport = await TransportU2F.create();
- * const ledgerSigner = new LedgerSigner(transport, "44'/1729'/6'/0'", true, DerivationType.BIP32_ED25519);
  * ```
  */
 export class LedgerSigner implements Signer {
@@ -92,8 +103,8 @@ export class LedgerSigner implements Signer {
     private derivationType: DerivationType = DerivationType.ED25519
   ) {
     this.transport.setScrambleKey('XTZ');
-    if (!path.startsWith(`44'/1729'`)) {
-      throw new InvalidDerivationPathError(path, `expecting prefix "44'/1729'".`);
+    if (!path.startsWith("44'/1729'")) {
+      throw new InvalidDerivationPathError(path);
     }
     if (!Object.values(DerivationType).includes(derivationType)) {
       throw new InvalidDerivationTypeError(derivationType.toString());
@@ -120,8 +131,8 @@ export class LedgerSigner implements Signer {
     const compressedPublicKey = compressPublicKey(rawPublicKey, this.derivationType);
 
     const prefixes = this.getPrefixes();
-    const publicKey = b58Encode(compressedPublicKey, prefixes.prefPk);
-    const publicKeyHash = b58Encode(blake2b(compressedPublicKey, { dkLen: 20 }), prefixes.prefPkh);
+    const publicKey = b58cencode(compressedPublicKey, prefixes.prefPk);
+    const publicKeyHash = b58cencode(hash(compressedPublicKey, 20), prefixes.prefPkh);
 
     this._publicKey = publicKey;
     this._publicKeyHash = publicKeyHash;
@@ -143,7 +154,7 @@ export class LedgerSigner implements Signer {
       );
       return responseLedger;
     } catch (error) {
-      throw new PublicKeyRetrievalError(error);
+      throw new PublicKeyRetrievalError();
     }
   }
 
@@ -159,16 +170,11 @@ export class LedgerSigner implements Signer {
     messageToSend = chunkOperation(messageToSend, watermarkedBytes2buff);
     const ledgerResponse = await this.signWithLedger(messageToSend);
     let signature;
-    if (
-      this.derivationType === DerivationType.ED25519 ||
-      this.derivationType === DerivationType.BIP32_ED25519
-    ) {
+    if (this.derivationType === DerivationType.ED25519) {
       signature = ledgerResponse.slice(0, ledgerResponse.length - 2).toString('hex');
     } else {
       if (!validateResponse(ledgerResponse)) {
-        throw new InvalidLedgerResponseError(
-          'Invalid signature return by ledger unable to parse the response'
-        );
+        throw new InvalidLedgerResponseError('Cannot parse ledger response');
       }
       const idxLengthRVal = 3; // Third element of response is length of r value
       const rValue = extractValue(idxLengthRVal, ledgerResponse);
@@ -180,8 +186,8 @@ export class LedgerSigner implements Signer {
 
     return {
       bytes,
-      sig: b58Encode(signature, PrefixV2.GenericSignature),
-      prefixSig: b58Encode(signature, this.getPrefixes().prefSig),
+      sig: b58cencode(signature, prefix[Prefix.SIG]),
+      prefixSig: b58cencode(signature, this.getPrefixes().prefSig),
       sbytes: bytes + signature,
     };
   }
@@ -210,26 +216,23 @@ export class LedgerSigner implements Signer {
   }
 
   private getPrefixes() {
-    if (
-      this.derivationType === DerivationType.ED25519 ||
-      this.derivationType === DerivationType.BIP32_ED25519
-    ) {
+    if (this.derivationType === DerivationType.ED25519) {
       return {
-        prefPk: PrefixV2.Ed25519PublicKey,
-        prefPkh: PrefixV2.Ed25519PublicKeyHash,
-        prefSig: PrefixV2.Ed25519Signature,
+        prefPk: prefix[Prefix.EDPK],
+        prefPkh: prefix[Prefix.TZ1],
+        prefSig: prefix[Prefix.EDSIG],
       };
     } else if (this.derivationType === DerivationType.SECP256K1) {
       return {
-        prefPk: PrefixV2.Secp256k1PublicKey,
-        prefPkh: PrefixV2.Secp256k1PublicKeyHash,
-        prefSig: PrefixV2.Secp256k1Signature,
+        prefPk: prefix[Prefix.SPPK],
+        prefPkh: prefix[Prefix.TZ2],
+        prefSig: prefix[Prefix.SPSIG],
       };
     } else {
       return {
-        prefPk: PrefixV2.P256PublicKey,
-        prefPkh: PrefixV2.P256PublicKeyHash,
-        prefSig: PrefixV2.P256Signature,
+        prefPk: prefix[Prefix.P2PK],
+        prefPkh: prefix[Prefix.TZ3],
+        prefSig: prefix[Prefix.P2SIG],
       };
     }
   }
